@@ -1,0 +1,1507 @@
+import { useState, useEffect, useCallback, useRef } from “react”;
+import {
+LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid
+} from “recharts”;
+
+// ─── Constanten ──────────────────────────────────────────────────────────────
+const GAS_KWH_PER_M3 = 9.77; // kWh calorische waarde per m³ aardgas (onderste)
+const BTW = 1.21;
+
+const LEVERANCIERS_STROOM = [
+{ id: “frank”, naam: “Frank Energie”, levering: 0.029 },
+{ id: “tibber”, naam: “Tibber”, levering: 0.019 },
+{ id: “eneco”, naam: “Eneco Vrij”, levering: 0.035 },
+{ id: “vattenfall”, naam: “Vattenfall Flex”, levering: 0.032 },
+{ id: “greenchoice”, naam: “Greenchoice”, levering: 0.031 },
+{ id: “andere”, naam: “Andere / Handmatig”, levering: 0.030 },
+];
+
+const LEVERANCIERS_GAS = [
+{ id: “frank”, naam: “Frank Energie”, levering: 0.025 },
+{ id: “eneco”, naam: “Eneco Vrij”, levering: 0.030 },
+{ id: “vattenfall”, naam: “Vattenfall Flex”, levering: 0.028 },
+{ id: “greenchoice”, naam: “Greenchoice”, levering: 0.027 },
+{ id: “andere”, naam: “Andere / Handmatig”, levering: 0.025 },
+];
+
+const DEFAULT_INSTELLINGEN = {
+// Stroom
+stroom_leverancier: “frank”,
+stroom_levering_kwh: 0.029,      // €/kWh excl BTW
+stroom_vast_maand: 5.50,          // €/maand
+stroom_eb: 0.1228,               // energiebelasting €/kWh excl BTW (2025)
+stroom_btw: true,
+// Gas
+gas_leverancier: “frank”,
+gas_levering_m3: 0.025,           // €/m³ excl BTW
+gas_vast_maand: 6.00,             // €/maand
+gas_eb: 0.4782,                  // energiebelasting €/m³ excl BTW (2025)
+gas_btw: true,
+// Verwarming
+cop_airco: 3.5,                  // COP warmtepomp/airco
+rendement_ketel: 0.95,           // CV-ketel rendement (HR-ketel)
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function loadInstellingen() {
+try {
+const s = localStorage.getItem(“energie_instellingen”);
+return s ? { …DEFAULT_INSTELLINGEN, …JSON.parse(s) } : { …DEFAULT_INSTELLINGEN };
+} catch { return { …DEFAULT_INSTELLINGEN }; }
+}
+function saveInstellingen(inst) {
+localStorage.setItem(“energie_instellingen”, JSON.stringify(inst));
+}
+
+function formatEuro(val, decimals = 4) {
+if (val == null || isNaN(val)) return “—”;
+return “€ “ + val.toFixed(decimals).replace(”.”, “,”);
+}
+function formatTime(iso) {
+const d = new Date(iso);
+return d.getHours().toString().padStart(2, “0”) + “:00”;
+}
+function nowHourISO() {
+const now = new Date();
+now.setMinutes(0, 0, 0);
+return now.toISOString();
+}
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+async function fetchEnergyZero(usageType) {
+const now = new Date();
+const from = new Date(now);
+from.setHours(0, 0, 0, 0);
+const till = new Date(now);
+till.setHours(23, 59, 59, 999);
+
+const url = `https://api.energyzero.nl/v1/energyprices?fromDate=${from.toISOString()}&tillDate=${till.toISOString()}&interval=4&usageType=${usageType}&inclBtw=false`;
+const res = await fetch(url);
+if (!res.ok) throw new Error(`HTTP ${res.status}`);
+const data = await res.json();
+return data.Prices || [];
+}
+
+// ─── Berekeningen ─────────────────────────────────────────────────────────────
+function berekenStroomPrijs(inkoopExclBtw, inst) {
+const excl = inkoopExclBtw + inst.stroom_levering_kwh + inst.stroom_eb;
+return inst.stroom_btw ? excl * BTW : excl;
+}
+
+function berekenGasPrijs(inkoopExclBtw, inst) {
+const excl = inkoopExclBtw + inst.gas_levering_m3 + inst.gas_eb;
+return inst.gas_btw ? excl * BTW : excl;
+}
+
+function berekenVerwarmingskosten(stroomPrijsInclBtw, gasPrijsInclBtw, inst) {
+// Kosten per kWh warmte
+const airco = stroomPrijsInclBtw / inst.cop_airco;
+const gas = gasPrijsInclBtw / (GAS_KWH_PER_M3 * inst.rendement_ketel);
+return { airco, gas, verschil: gas - airco, isAircoBeter: airco < gas };
+}
+
+// ─── Custom Tooltip Chart ──────────────────────────────────────────────────
+function ChartTooltip({ active, payload, label, inst, type }) {
+if (!active || !payload?.length) return null;
+const inkoop = payload[0]?.value;
+const allin = type === “stroom”
+? berekenStroomPrijs(inkoop, inst)
+: berekenGasPrijs(inkoop, inst);
+return (
+<div style={{
+background: “#0f1520”, border: “1px solid #2a3a4a”,
+padding: “10px 14px”, borderRadius: 8, fontSize: 12,
+fontFamily: “‘Space Mono’, monospace”
+}}>
+<div style={{ color: “#7a9bb5”, marginBottom: 4 }}>{label}</div>
+<div style={{ color: “#f5a623” }}>Inkoop: {formatEuro(inkoop, 5)}/kWh</div>
+<div style={{ color: “#e8f4ff” }}>All-in: {formatEuro(allin, 4)}/kWh</div>
+</div>
+);
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+export default function App() {
+const [tab, setTab] = useState(“dashboard”);
+const [inst, setInst] = useState(loadInstellingen);
+const [stroomPrijzen, setStroomPrijzen] = useState([]);
+const [gasPrijzen, setGasPrijzen] = useState([]);
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState(null);
+const [lastUpdate, setLastUpdate] = useState(null);
+const intervalRef = useRef(null);
+
+const fetchPrijzen = useCallback(async () => {
+setLoading(true);
+setError(null);
+try {
+const [stroom, gas] = await Promise.all([
+fetchEnergyZero(1),
+fetchEnergyZero(3),
+]);
+setStroomPrijzen(stroom);
+setGasPrijzen(gas);
+setLastUpdate(new Date());
+} catch (e) {
+setError(“Kan prijzen niet ophalen. Controleer je verbinding. (” + e.message + “)”);
+} finally {
+setLoading(false);
+}
+}, []);
+
+useEffect(() => {
+fetchPrijzen();
+// Refresh elk uur op het hele uur
+const msUntilNextHour = () => {
+const now = new Date();
+return (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000;
+};
+const timeout = setTimeout(() => {
+fetchPrijzen();
+intervalRef.current = setInterval(fetchPrijzen, 3600000);
+}, msUntilNextHour());
+return () => { clearTimeout(timeout); clearInterval(intervalRef.current); };
+}, [fetchPrijzen]);
+
+const huidigUur = nowHourISO();
+const huidigStroom = stroomPrijzen.find(p => {
+const d = new Date(p.readingDate);
+return d.getHours() === new Date().getHours();
+});
+const huidigGas = gasPrijzen[0]; // gas is dagprijs
+
+const stroomInkoop = huidigStroom?.price ?? null;
+const gasInkoop = huidigGas?.price ?? null;
+
+const stroomAllin = stroomInkoop != null ? berekenStroomPrijs(stroomInkoop, inst) : null;
+const gasAllin = gasInkoop != null ? berekenGasPrijs(gasInkoop, inst) : null;
+
+const vergelijking = stroomAllin != null && gasAllin != null
+? berekenVerwarmingskosten(stroomAllin, gasAllin, inst)
+: null;
+
+// Chart data
+const stroomChartData = stroomPrijzen.map(p => ({
+time: formatTime(p.readingDate),
+inkoop: p.price,
+allin: berekenStroomPrijs(p.price, inst),
+isCurrent: formatTime(p.readingDate) === formatTime(huidigUur),
+}));
+
+function handleInstChange(key, value) {
+const updated = { …inst, [key]: value };
+setInst(updated);
+saveInstellingen(updated);
+}
+
+function handleLeverancierStroom(id) {
+const lev = LEVERANCIERS_STROOM.find(l => l.id === id);
+const updated = {
+…inst,
+stroom_leverancier: id,
+stroom_levering_kwh: lev?.levering ?? inst.stroom_levering_kwh,
+};
+setInst(updated);
+saveInstellingen(updated);
+}
+
+function handleLeverancierGas(id) {
+const lev = LEVERANCIERS_GAS.find(l => l.id === id);
+const updated = {
+…inst,
+gas_leverancier: id,
+gas_levering_m3: lev?.levering ?? inst.gas_levering_m3,
+};
+setInst(updated);
+saveInstellingen(updated);
+}
+
+// ── Styles ──────────────────────────────────────────────────────────────────
+const styles = {
+root: {
+minHeight: “100vh”,
+background: “#080c12”,
+color: “#c8dce8”,
+fontFamily: “‘Syne’, sans-serif”,
+backgroundImage: `radial-gradient(ellipse 80% 50% at 20% 10%, rgba(245,166,35,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(78,205,196,0.04) 0%, transparent 60%)`,
+},
+header: {
+borderBottom: “1px solid rgba(255,255,255,0.06)”,
+padding: “0 24px”,
+display: “flex”, alignItems: “center”, justifyContent: “space-between”,
+height: 60,
+background: “rgba(0,0,0,0.3)”,
+backdropFilter: “blur(10px)”,
+position: “sticky”, top: 0, zIndex: 100,
+},
+logo: {
+display: “flex”, alignItems: “center”, gap: 10,
+fontWeight: 800, fontSize: 18, letterSpacing: “0.04em”,
+color: “#f5a623”,
+},
+logoIcon: {
+width: 28, height: 28,
+},
+nav: { display: “flex”, gap: 4 },
+navBtn: (active) => ({
+background: active ? “rgba(245,166,35,0.12)” : “transparent”,
+border: active ? “1px solid rgba(245,166,35,0.3)” : “1px solid transparent”,
+color: active ? “#f5a623” : “#7a9bb5”,
+padding: “7px 18px”, borderRadius: 6, cursor: “pointer”,
+fontFamily: “‘Syne’, sans-serif”, fontWeight: 600, fontSize: 13,
+letterSpacing: “0.05em”, transition: “all 0.15s”,
+}),
+main: { maxWidth: 1100, margin: “0 auto”, padding: “28px 20px” },
+statusBar: {
+display: “flex”, alignItems: “center”, gap: 10, fontSize: 12,
+fontFamily: “‘Space Mono’, monospace”, color: “#4a6a7a”,
+marginBottom: 24, justifyContent: “flex-end”,
+},
+dot: (ok) => ({
+width: 7, height: 7, borderRadius: “50%”,
+background: ok ? “#4ecdc4” : “#e05”,
+boxShadow: ok ? “0 0 6px #4ecdc4” : “0 0 6px #e05”,
+}),
+refreshBtn: {
+background: “none”, border: “1px solid #2a3a4a”,
+color: “#4ecdc4”, padding: “4px 12px”, borderRadius: 5,
+cursor: “pointer”, fontFamily: “‘Space Mono’, monospace”, fontSize: 11,
+transition: “all 0.15s”,
+},
+grid3: {
+display: “grid”, gridTemplateColumns: “repeat(auto-fit, minmax(300px, 1fr))”,
+gap: 16, marginBottom: 20,
+},
+card: {
+background: “rgba(255,255,255,0.03)”,
+border: “1px solid rgba(255,255,255,0.07)”,
+borderRadius: 12, padding: “20px 22px”,
+backdropFilter: “blur(4px)”,
+},
+cardLabel: {
+fontSize: 11, letterSpacing: “0.12em”, color: “#4a6a7a”,
+textTransform: “uppercase”, fontWeight: 700, marginBottom: 8,
+},
+bigNum: {
+fontFamily: “‘Space Mono’, monospace”,
+fontSize: 32, fontWeight: 700, letterSpacing: “-0.01em”,
+lineHeight: 1.1,
+},
+subNum: {
+fontFamily: “‘Space Mono’, monospace”,
+fontSize: 13, color: “#7a9bb5”, marginTop: 4,
+},
+badge: (kleur) => ({
+display: “inline-block”,
+background: kleur === “goed” ? “rgba(78,205,196,0.12)” : “rgba(245,166,35,0.12)”,
+border: `1px solid ${kleur === "goed" ? "rgba(78,205,196,0.3)" : "rgba(245,166,35,0.3)"}`,
+color: kleur === “goed” ? “#4ecdc4” : “#f5a623”,
+padding: “2px 10px”, borderRadius: 20, fontSize: 11,
+fontFamily: “‘Space Mono’, monospace”, fontWeight: 700,
+letterSpacing: “0.06em”, marginTop: 8,
+}),
+adviesCard: (isAirco) => ({
+background: isAirco
+? “linear-gradient(135deg, rgba(78,205,196,0.08) 0%, rgba(78,205,196,0.03) 100%)”
+: “linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(245,166,35,0.03) 100%)”,
+border: `1px solid ${isAirco ? "rgba(78,205,196,0.2)" : "rgba(245,166,35,0.2)"}`,
+borderRadius: 12, padding: “22px 24px”, marginBottom: 20,
+display: “flex”, alignItems: “center”, gap: 20,
+}),
+adviesIcon: { fontSize: 42, lineHeight: 1 },
+adviesTitle: {
+fontSize: 11, letterSpacing: “0.12em”, textTransform: “uppercase”,
+color: “#4a6a7a”, fontWeight: 700, marginBottom: 4,
+},
+adviesBig: (isAirco) => ({
+fontSize: 22, fontWeight: 800,
+color: isAirco ? “#4ecdc4” : “#f5a623”,
+}),
+adviesSub: { fontSize: 13, color: “#7a9bb5”, marginTop: 4 },
+chartCard: {
+background: “rgba(255,255,255,0.02)”,
+border: “1px solid rgba(255,255,255,0.06)”,
+borderRadius: 12, padding: “22px”,
+marginBottom: 20,
+},
+chartTitle: {
+fontSize: 11, letterSpacing: “0.12em”, color: “#4a6a7a”,
+textTransform: “uppercase”, fontWeight: 700, marginBottom: 16,
+},
+// Settings
+section: {
+background: “rgba(255,255,255,0.02)”,
+border: “1px solid rgba(255,255,255,0.06)”,
+borderRadius: 12, padding: “22px 24px”, marginBottom: 16,
+},
+sectionTitle: {
+fontSize: 13, fontWeight: 800, letterSpacing: “0.08em”,
+color: “#c8dce8”, marginBottom: 16, textTransform: “uppercase”,
+paddingBottom: 10, borderBottom: “1px solid rgba(255,255,255,0.06)”,
+display: “flex”, alignItems: “center”, gap: 8,
+},
+fieldGrid: {
+display: “grid”, gridTemplateColumns: “repeat(auto-fit, minmax(220px, 1fr))”,
+gap: 14,
+},
+field: { display: “flex”, flexDirection: “column”, gap: 6 },
+label: { fontSize: 11, color: “#4a6a7a”, letterSpacing: “0.08em”, fontWeight: 600 },
+input: {
+background: “rgba(255,255,255,0.04)”,
+border: “1px solid rgba(255,255,255,0.1)”,
+borderRadius: 7, padding: “9px 12px”,
+color: “#c8dce8”, fontFamily: “‘Space Mono’, monospace”, fontSize: 13,
+outline: “none”, width: “100%”, boxSizing: “border-box”,
+transition: “border-color 0.15s”,
+},
+select: {
+background: “#0f1520”,
+border: “1px solid rgba(255,255,255,0.1)”,
+borderRadius: 7, padding: “9px 12px”,
+color: “#c8dce8”, fontFamily: “‘Syne’, sans-serif”, fontSize: 13,
+outline: “none”, width: “100%”, boxSizing: “border-box”, cursor: “pointer”,
+},
+errorBox: {
+background: “rgba(220,50,50,0.08)”, border: “1px solid rgba(220,50,50,0.2)”,
+borderRadius: 8, padding: “12px 16px”, marginBottom: 16,
+color: “#ff7a7a”, fontSize: 13, fontFamily: “‘Space Mono’, monospace”,
+},
+divider: {
+height: 1, background: “rgba(255,255,255,0.06)”, margin: “12px 0”,
+},
+compareRow: {
+display: “flex”, gap: 12, marginBottom: 16,
+},
+compareItem: (active) => ({
+flex: 1, background: active ? “rgba(255,255,255,0.05)” : “rgba(255,255,255,0.02)”,
+border: `1px solid ${active ? "rgba(245,166,35,0.25)" : "rgba(255,255,255,0.06)"}`,
+borderRadius: 10, padding: “16px 18px”,
+transition: “all 0.2s”,
+}),
+};
+
+// ── Render Dashboard ─────────────────────────────────────────────────────────
+const renderDashboard = () => (
+<div>
+{error && <div style={styles.errorBox}>⚠ {error}</div>}
+
+```
+  {/* Advies banner */}
+  {vergelijking && (
+    <div style={styles.adviesCard(vergelijking.isAircoBeter)}>
+      <div style={styles.adviesIcon}>
+        {vergelijking.isAircoBeter ? "❄️" : "🔥"}
+      </div>
+      <div>
+        <div style={styles.adviesTitle}>Verwarmingsadvies — Nu</div>
+        <div style={styles.adviesBig(vergelijking.isAircoBeter)}>
+          {vergelijking.isAircoBeter ? "Verwarmen met airco is voordeliger" : "Verwarmen met gas is voordeliger"}
+        </div>
+        <div style={styles.adviesSub}>
+          Verschil: {formatEuro(Math.abs(vergelijking.verschil), 4)} per kWh warmte
+          &nbsp;·&nbsp;
+          {vergelijking.isAircoBeter
+            ? `Airco ${formatEuro(vergelijking.airco, 4)}/kWh vs Gas ${formatEuro(vergelijking.gas, 4)}/kWh`
+            : `Gas ${formatEuro(vergelijking.gas, 4)}/kWh vs Airco ${formatEuro(vergelijking.airco, 4)}/kWh`}
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* Vergelijking cards */}
+  <div style={styles.compareRow}>
+    <div style={styles.compareItem(vergelijking?.isAircoBeter)}>
+      <div style={styles.cardLabel}>❄️ Airco / Warmtepomp</div>
+      <div style={{ ...styles.bigNum, color: "#4ecdc4" }}>
+        {vergelijking ? formatEuro(vergelijking.airco, 4) : "—"}
+      </div>
+      <div style={styles.subNum}>per kWh warmte (COP {inst.cop_airco})</div>
+      {stroomAllin && <div style={styles.subNum}>
+        Stroom all-in: {formatEuro(stroomAllin, 4)}/kWh
+      </div>}
+      {vergelijking?.isAircoBeter && <div style={styles.badge("goed")}>✓ GOEDKOPER</div>}
+    </div>
+    <div style={styles.compareItem(!vergelijking?.isAircoBeter)}>
+      <div style={styles.cardLabel}>🔥 CV-Ketel Gas</div>
+      <div style={{ ...styles.bigNum, color: "#f5a623" }}>
+        {vergelijking ? formatEuro(vergelijking.gas, 4) : "—"}
+      </div>
+      <div style={styles.subNum}>per kWh warmte ({(inst.rendement_ketel * 100).toFixed(0)}% rendement)</div>
+      {gasAllin && <div style={styles.subNum}>
+        Gas all-in: {formatEuro(gasAllin, 4)}/m³
+      </div>}
+      {vergelijking && !vergelijking.isAircoBeter && <div style={styles.badge("goed")}>✓ GOEDKOPER</div>}
+    </div>
+  </div>
+
+  {/* Prijskaarten */}
+  <div style={styles.grid3}>
+    <div style={styles.card}>
+      <div style={styles.cardLabel}>⚡ Stroom — Inkoop</div>
+      <div style={{ ...styles.bigNum, color: "#f5e642" }}>
+        {stroomInkoop != null ? formatEuro(stroomInkoop, 5) : loading ? "…" : "—"}
+      </div>
+      <div style={styles.subNum}>per kWh (excl. BTW)</div>
+      <div style={{ ...styles.divider }} />
+      <div style={{ fontSize: 12, color: "#7a9bb5", fontFamily: "'Space Mono', monospace" }}>
+        <div>+ Levering: {formatEuro(inst.stroom_levering_kwh, 4)}/kWh</div>
+        <div>+ Energiebelasting: {formatEuro(inst.stroom_eb, 4)}/kWh</div>
+        {inst.stroom_btw && <div>+ BTW 21%</div>}
+      </div>
+      <div style={{ ...styles.divider }} />
+      <div style={styles.cardLabel}>All-in prijs</div>
+      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, fontWeight: 700, color: "#e8f4ff" }}>
+        {stroomAllin != null ? formatEuro(stroomAllin, 4) : "—"}/kWh
+      </div>
+    </div>
+
+    <div style={styles.card}>
+      <div style={styles.cardLabel}>🔥 Gas — Inkoop</div>
+      <div style={{ ...styles.bigNum, color: "#ff8c42" }}>
+        {gasInkoop != null ? formatEuro(gasInkoop, 5) : loading ? "…" : "—"}
+      </div>
+      <div style={styles.subNum}>per m³ (excl. BTW)</div>
+      <div style={{ ...styles.divider }} />
+      <div style={{ fontSize: 12, color: "#7a9bb5", fontFamily: "'Space Mono', monospace" }}>
+        <div>+ Levering: {formatEuro(inst.gas_levering_m3, 4)}/m³</div>
+        <div>+ Energiebelasting: {formatEuro(inst.gas_eb, 4)}/m³</div>
+        {inst.gas_btw && <div>+ BTW 21%</div>}
+      </div>
+      <div style={{ ...styles.divider }} />
+      <div style={styles.cardLabel}>All-in prijs</div>
+      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, fontWeight: 700, color: "#e8f4ff" }}>
+        {gasAllin != null ? formatEuro(gasAllin, 4) : "—"}/m³
+      </div>
+    </div>
+
+    <div style={styles.card}>
+      <div style={styles.cardLabel}>📊 Kosten Vergelijking</div>
+      {vergelijking ? (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: "#4a6a7a", marginBottom: 4 }}>AIRCO — kWh warmte</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, color: "#4ecdc4" }}>
+              {formatEuro(vergelijking.airco, 5)}
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: "#4a6a7a", marginBottom: 4 }}>GAS — kWh warmte</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, color: "#f5a623" }}>
+              {formatEuro(vergelijking.gas, 5)}
+            </div>
+          </div>
+          <div style={styles.divider} />
+          <div style={{ fontSize: 11, color: "#4a6a7a", marginBottom: 4 }}>BESPARING MET {vergelijking.isAircoBeter ? "AIRCO" : "GAS"}</div>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, color: vergelijking.isAircoBeter ? "#4ecdc4" : "#f5a623" }}>
+            {formatEuro(Math.abs(vergelijking.verschil), 5)}/kWh warmte
+          </div>
+          <div style={{ fontSize: 12, color: "#7a9bb5", marginTop: 4 }}>
+            Per 1.000 kWh warmte: {formatEuro(Math.abs(vergelijking.verschil) * 1000, 2)}
+          </div>
+        </>
+      ) : (
+        <div style={{ color: "#4a6a7a", fontSize: 13 }}>
+          {loading ? "Prijzen laden…" : "Geen data beschikbaar"}
+        </div>
+      )}
+    </div>
+  </div>
+
+  {/* Stroom grafiek */}
+  {stroomChartData.length > 0 && (
+    <div style={styles.chartCard}>
+      <div style={styles.chartTitle}>⚡ Stroomprijs Vandaag — All-in (incl. levering + belasting + BTW)</div>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={stroomChartData} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+          <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+          <XAxis
+            dataKey="time"
+            tick={{ fill: "#4a6a7a", fontSize: 11, fontFamily: "'Space Mono', monospace" }}
+            tickLine={false} axisLine={false}
+            interval={2}
+          />
+          <YAxis
+            tick={{ fill: "#4a6a7a", fontSize: 10, fontFamily: "'Space Mono', monospace" }}
+            tickLine={false} axisLine={false}
+            tickFormatter={v => `€${v.toFixed(3)}`}
+            width={60}
+          />
+          <Tooltip content={<ChartTooltip inst={inst} type="stroom" />} />
+          <ReferenceLine
+            x={stroomChartData.find(d => d.isCurrent)?.time}
+            stroke="rgba(245,166,35,0.4)"
+            strokeDasharray="3 3"
+            label={{ value: "Nu", fill: "#f5a623", fontSize: 10, fontFamily: "'Space Mono', monospace" }}
+          />
+          <Line
+            type="monotone" dataKey="allin"
+            stroke="#f5e642" strokeWidth={2}
+            dot={false} activeDot={{ r: 4, fill: "#f5a623" }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div style={{ fontSize: 11, color: "#2a4a5a", fontFamily: "'Space Mono', monospace", marginTop: 8 }}>
+        Bron: EnergyZero API · Tarieven zijn indicatief
+      </div>
+    </div>
+  )}
+</div>
+```
+
+);
+
+// ── Render Instellingen ──────────────────────────────────────────────────────
+const renderInstellingen = () => (
+<div>
+{/* Stroom */}
+<div style={styles.section}>
+<div style={styles.sectionTitle}>⚡ Stroomleverancier</div>
+<div style={styles.fieldGrid}>
+<div style={styles.field}>
+<label style={styles.label}>LEVERANCIER</label>
+<select
+style={styles.select}
+value={inst.stroom_leverancier}
+onChange={e => handleLeverancierStroom(e.target.value)}
+>
+{LEVERANCIERS_STROOM.map(l => (
+<option key={l.id} value={l.id}>{l.naam}</option>
+))}
+</select>
+</div>
+<div style={styles.field}>
+<label style={styles.label}>LEVERINGSKOSTEN (€/kWh excl. BTW)</label>
+<input
+style={styles.input}
+type=“number” step=“0.001”
+value={inst.stroom_levering_kwh}
+onChange={e => handleInstChange(“stroom_levering_kwh”, parseFloat(e.target.value))}
+/>
+</div>
+<div style={styles.field}>
+<label style={styles.label}>VASTE KOSTEN (€/maand)</label>
+<input
+style={styles.input}
+type=“number” step=“0.01”
+value={inst.stroom_vast_maand}
+onChange={e => handleInstChange(“stroom_vast_maand”, parseFloat(e.target.value))}
+/>
+</div>
+<div style={styles.field}>
+<label style={styles.label}>ENERGIEBELASTING (€/kWh excl. BTW)</label>
+<input
+style={styles.input}
+type=“number” step=“0.0001”
+value={inst.stroom_eb}
+onChange={e => handleInstChange(“stroom_eb”, parseFloat(e.target.value))}
+/>
+</div>
+<div style={styles.field}>
+<label style={styles.label}>BTW BEREKENEN (21%)</label>
+<select
+style={styles.select}
+value={inst.stroom_btw ? “ja” : “nee”}
+onChange={e => handleInstChange(“stroom_btw”, e.target.value === “ja”)}
+>
+<option value="ja">Ja — incl. BTW</option>
+<option value="nee">Nee — excl. BTW</option>
+</select>
+</div>
+</div>
+</div>
+
+```
+  {/* Gas */}
+  <div style={styles.section}>
+    <div style={styles.sectionTitle}>🔥 Gasleverancier</div>
+    <div style={styles.fieldGrid}>
+      <div style={styles.field}>
+        <label style={styles.label}>LEVERANCIER</label>
+        <select
+          style={styles.select}
+          value={inst.gas_leverancier}
+          onChange={e => handleLeverancierGas(e.target.value)}
+        >
+          {LEVERANCIERS_GAS.map(l => (
+            <option key={l.id} value={l.id}>{l.naam}</option>
+          ))}
+        </select>
+      </div>
+      <div style={styles.field}>
+        <label style={styles.label}>LEVERINGSKOSTEN (€/m³ excl. BTW)</label>
+        <input
+          style={styles.input}
+          type="number" step="0.001"
+          value={inst.gas_levering_m3}
+          onChange={e => handleInstChange("gas_levering_m3", parseFloat(e.target.value))}
+        />
+      </div>
+      <div style={styles.field}>
+        <label style={styles.label}>VASTE KOSTEN (€/maand)</label>
+        <input
+          style={styles.input}
+          type="number" step="0.01"
+          value={inst.gas_vast_maand}
+          onChange={e => handleInstChange("gas_vast_maand", parseFloat(e.target.value))}
+        />
+      </div>
+      <div style={styles.field}>
+        <label style={styles.label}>ENERGIEBELASTING (€/m³ excl. BTW)</label>
+        <input
+          style={styles.input}
+          type="number" step="0.0001"
+          value={inst.gas_eb}
+          onChange={e => handleInstChange("gas_eb", parseFloat(e.target.value))}
+        />
+      </div>
+      <div style={styles.field}>
+        <label style={styles.label}>BTW BEREKENEN (21%)</label>
+        <select
+          style={styles.select}
+          value={inst.gas_btw ? "ja" : "nee"}
+          onChange={e => handleInstChange("gas_btw", e.target.value === "ja")}
+        >
+          <option value="ja">Ja — incl. BTW</option>
+          <option value="nee">Nee — excl. BTW</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  {/* Verwarming */}
+  <div style={styles.section}>
+    <div style={styles.sectionTitle}>🌡️ Verwarmingsinstellingen</div>
+    <div style={styles.fieldGrid}>
+      <div style={styles.field}>
+        <label style={styles.label}>COP AIRCO / WARMTEPOMP</label>
+        <input
+          style={styles.input}
+          type="number" step="0.1" min="1" max="8"
+          value={inst.cop_airco}
+          onChange={e => handleInstChange("cop_airco", parseFloat(e.target.value))}
+        />
+        <span style={{ fontSize: 11, color: "#4a6a7a" }}>
+          Typisch: 2.5–3.5 (split airco), 3.5–5.0 (warmtepomp)
+        </span>
+      </div>
+      <div style={styles.field}>
+        <label style={styles.label}>RENDEMENT CV-KETEL</label>
+        <input
+          style={styles.input}
+          type="number" step="0.01" min="0.5" max="1"
+          value={inst.rendement_ketel}
+          onChange={e => handleInstChange("rendement_ketel", parseFloat(e.target.value))}
+        />
+        <span style={{ fontSize: 11, color: "#4a6a7a" }}>
+          HR-ketel: 0.95–1.07 · Conventioneel: 0.80–0.90
+        </span>
+      </div>
+    </div>
+    <div style={{ marginTop: 16, padding: 14, background: "rgba(255,255,255,0.02)", borderRadius: 8 }}>
+      <div style={{ fontSize: 11, color: "#4a6a7a", marginBottom: 6 }}>BEREKENINGSFORMULES</div>
+      <div style={{ fontSize: 12, fontFamily: "'Space Mono', monospace", color: "#7a9bb5", lineHeight: 1.8 }}>
+        <div>Airco: stroomprijs ÷ COP = kosten/kWh warmte</div>
+        <div>Gas: gasprijs ÷ (9,77 kWh/m³ × rendement) = kosten/kWh warmte</div>
+        <div style={{ marginTop: 4, color: "#4a6a7a" }}>Aardgas calorische waarde: 9,77 kWh/m³ (onderverhitting)</div>
+      </div>
+    </div>
+  </div>
+
+  <div style={{ fontSize: 11, color: "#2a4a5a", fontFamily: "'Space Mono', monospace", padding: "4px 0" }}>
+    Instellingen worden automatisch opgeslagen in je browser. Tarieven zijn indicatief — controleer je energierekening.
+  </div>
+</div>
+```
+
+);
+
+return (
+<>
+<style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; } input[type=number]::-webkit-inner-spin-button { opacity: 0.3; } input:focus { border-color: rgba(245,166,35,0.4) !important; } select:focus { border-color: rgba(245,166,35,0.4) !important; } ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #080c12; } ::-webkit-scrollbar-thumb { background: #1a2a3a; border-radius: 3px; }`}</style>
+
+```
+  <div style={styles.root}>
+    {/* Header */}
+    <header style={styles.header}>
+      <div style={styles.logo}>
+        <svg style={styles.logoIcon} viewBox="0 0 28 28" fill="none">
+          <polygon points="14,2 22,10 18,10 18,26 10,26 10,10 6,10" fill="#f5a623" opacity="0.9"/>
+          <circle cx="14" cy="14" r="13" stroke="#f5a623" strokeWidth="1" fill="none" opacity="0.2"/>
+        </svg>
+        ENERGIEMETER
+      </div>
+      <nav style={styles.nav}>
+        <button style={styles.navBtn(tab === "dashboard")} onClick={() => setTab("dashboard")}>
+          Dashboard
+        </button>
+        <button style={styles.navBtn(tab === "instellingen")} onClick={() => setTab("instellingen")}>
+          Instellingen
+        </button>
+      </nav>
+    </header>
+
+    {/* Main */}
+    <main style={styles.main}>
+      <div style={styles.statusBar}>
+        <div style={styles.dot(!error && !loading)} />
+        <span>
+          {loading ? "Ophalen…"
+            : lastUpdate ? `Bijgewerkt: ${lastUpdate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`
+              : "Niet geladen"}
+        </span>
+        <span>·</span>
+        <span>Volgende update: elk heel uur</span>
+        <button style={styles.refreshBtn} onClick={fetchPrijzen}>↻ Nu ophalen</button>
+      </div>
+
+      {tab === "dashboard" ? renderDashboard() : renderInstellingen()}
+    </main>
+  </<!DOCTYPE html>
+
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Energiemeter — Gas vs Airco</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #080c12;
+      color: #c8dce8;
+      font-family: 'Syne', sans-serif;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(245,166,35,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(78,205,196,0.04) 0%, transparent 60%);
+    }
+    input[type=number]::-webkit-inner-spin-button { opacity: 0.3; }
+    input:focus, select:focus { outline: none; border-color: rgba(245,166,35,0.5) !important; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #080c12; }
+    ::-webkit-scrollbar-thumb { background: #1a2a3a; border-radius: 3px; }
+
+```
+/* ── Header ── */
+.header {
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 100;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 800; font-size: 18px; letter-spacing: 0.04em; color: #f5a623;
+}
+.logo svg { width: 28px; height: 28px; flex-shrink: 0; }
+.nav { display: flex; gap: 4px; }
+.nav-btn {
+  background: transparent; border: 1px solid transparent;
+  color: #7a9bb5; padding: 7px 18px; border-radius: 6px; cursor: pointer;
+  font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px;
+  letter-spacing: 0.05em; transition: all 0.15s;
+}
+.nav-btn.active {
+  background: rgba(245,166,35,0.12); border-color: rgba(245,166,35,0.3); color: #f5a623;
+}
+
+/* ── Main ── */
+.main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+/* ── Status bar ── */
+.status-bar {
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+  font-family: 'Space Mono', monospace; color: #4a6a7a;
+  margin-bottom: 24px; justify-content: flex-end; flex-wrap: wrap;
+}
+.dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: #4ecdc4; box-shadow: 0 0 6px #4ecdc4; transition: all 0.3s;
+}
+.dot.err  { background: #ee0055; box-shadow: 0 0 6px #ee0055; }
+.dot.spin { background: #f5a623; box-shadow: 0 0 6px #f5a623; }
+.refresh-btn {
+  background: none; border: 1px solid #2a3a4a; color: #4ecdc4;
+  padding: 4px 12px; border-radius: 5px; cursor: pointer;
+  font-family: 'Space Mono', monospace; font-size: 11px; transition: all 0.15s;
+}
+.refresh-btn:hover { background: rgba(78,205,196,0.08); }
+
+/* ── Tabs ── */
+.tab { display: none; }
+.tab.active { display: block; }
+
+/* ── Advies banner ── */
+.advies-card {
+  border-radius: 12px; padding: 20px 24px; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 20px;
+}
+.advies-card.airco {
+  background: linear-gradient(135deg, rgba(78,205,196,0.08), rgba(78,205,196,0.02));
+  border: 1px solid rgba(78,205,196,0.2);
+}
+.advies-card.gas {
+  background: linear-gradient(135deg, rgba(245,166,35,0.08), rgba(245,166,35,0.02));
+  border: 1px solid rgba(245,166,35,0.2);
+}
+.advies-icon { font-size: 40px; line-height: 1; flex-shrink: 0; }
+.advies-lbl { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #4a6a7a; font-weight: 700; margin-bottom: 4px; }
+.advies-big { font-size: 21px; font-weight: 800; }
+.advies-big.airco { color: #4ecdc4; }
+.advies-big.gas   { color: #f5a623; }
+.advies-sub { font-size: 13px; color: #7a9bb5; margin-top: 4px; }
+
+/* ── Compare row ── */
+.compare-row { display: flex; gap: 12px; margin-bottom: 16px; }
+.compare-item {
+  flex: 1; background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px; padding: 16px 18px; transition: all 0.2s;
+}
+.compare-item.winner {
+  background: rgba(255,255,255,0.04); border-color: rgba(245,166,35,0.25);
+}
+@media (max-width: 560px) { .compare-row { flex-direction: column; } }
+
+/* ── Grid & Cards ── */
+.grid3 {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 16px; margin-bottom: 20px;
+}
+.card {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px; padding: 20px 22px;
+}
+.card-lbl {
+  font-size: 11px; letter-spacing: 0.12em; color: #4a6a7a;
+  text-transform: uppercase; font-weight: 700; margin-bottom: 8px;
+}
+.big-num { font-family: 'Space Mono', monospace; font-size: 30px; font-weight: 700; line-height: 1.1; }
+.sub-num { font-family: 'Space Mono', monospace; font-size: 12px; color: #7a9bb5; margin-top: 4px; }
+.badge {
+  display: inline-block; padding: 2px 10px; border-radius: 20px; margin-top: 8px;
+  font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(78,205,196,0.12); border: 1px solid rgba(78,205,196,0.3); color: #4ecdc4;
+}
+.divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px 0; }
+.mono { font-family: 'Space Mono', monospace; }
+.cost-row { font-size: 12px; color: #7a9bb5; line-height: 2; font-family: 'Space Mono', monospace; }
+
+/* ── Chart ── */
+.chart-card {
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; padding: 22px; margin-bottom: 20px;
+}
+.chart-title {
+  font-size: 11px; letter-spacing: 0.12em; color: #4a6a7a;
+  text-transform: uppercase; font-weight: 700; margin-bottom: 12px;
+}
+.chart-wrap { position: relative; width: 100%; height: 200px; }
+.chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
+.chart-footer { font-size: 11px; color: #2a4a5a; font-family: 'Space Mono', monospace; margin-top: 8px; }
+
+/* Tooltip */
+#chart-tooltip {
+  position: fixed; pointer-events: none;
+  background: #0f1520; border: 1px solid #2a3a4a;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 12px; font-family: 'Space Mono', monospace;
+  display: none; z-index: 200; white-space: nowrap;
+}
+
+/* ── Error ── */
+.error-box {
+  background: rgba(220,50,50,0.08); border: 1px solid rgba(220,50,50,0.2);
+  border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
+  color: #ff7a7a; font-size: 13px; font-family: 'Space Mono', monospace;
+}
+.hidden { display: none !important; }
+
+/* ── Settings ── */
+.section {
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; padding: 22px 24px; margin-bottom: 16px;
+}
+.section-title {
+  font-size: 13px; font-weight: 800; letter-spacing: 0.08em;
+  color: #c8dce8; margin-bottom: 16px; text-transform: uppercase;
+  padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.field-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 11px; color: #4a6a7a; letter-spacing: 0.08em; font-weight: 600; }
+.field input, .field select {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px; padding: 9px 12px; color: #c8dce8;
+  font-family: 'Space Mono', monospace; font-size: 13px; width: 100%; transition: border-color 0.15s;
+}
+.field select { background: #0f1520; font-family: 'Syne', sans-serif; cursor: pointer; }
+.hint { font-size: 11px; color: #4a6a7a; }
+.formula-box {
+  margin-top: 16px; padding: 14px; background: rgba(255,255,255,0.02); border-radius: 8px;
+}
+.formula-box .flbl { font-size: 11px; color: #4a6a7a; margin-bottom: 6px; }
+.formula-box p { font-size: 12px; font-family: 'Space Mono', monospace; color: #7a9bb5; line-height: 2; }
+.formula-box .dim { color: #4a6a7a; }
+.settings-footer { font-size: 11px; color: #2a4a5a; font-family: 'Space Mono', monospace; padding: 4px 0; }
+```
+
+  </style>
+</head>
+<body>
+
+<!-- Tooltip -->
+
+<div id="chart-tooltip">
+  <div id="tt-time" style="color:#7a9bb5;margin-bottom:4px"></div>
+  <div id="tt-inkoop" style="color:#f5a623"></div>
+  <div id="tt-allin" style="color:#e8f4ff"></div>
+</div>
+
+<header class="header">
+  <div class="logo">
+    <svg viewBox="0 0 28 28" fill="none">
+      <polygon points="14,2 22,10 18,10 18,26 10,26 10,10 6,10" fill="#f5a623" opacity="0.9"/>
+      <circle cx="14" cy="14" r="13" stroke="#f5a623" stroke-width="1" fill="none" opacity="0.2"/>
+    </svg>
+    ENERGIEMETER
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showTab('dashboard')">Dashboard</button>
+    <button class="nav-btn"        onclick="showTab('instellingen')">Instellingen</button>
+  </nav>
+</header>
+
+<main class="main">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="dot" id="dot"></div>
+    <span id="status-txt">Laden…</span>
+    <span>·</span>
+    <span>Volgende update: elk heel uur</span>
+    <button class="refresh-btn" onclick="fetchAll()">↻ Nu ophalen</button>
+  </div>
+
+  <!-- ── Dashboard ── -->
+
+  <div id="tab-dashboard" class="tab active">
+    <div id="error-box" class="error-box hidden"></div>
+
+```
+<!-- Advies -->
+<div id="advies" class="advies-card airco">
+  <div class="advies-icon" id="advies-icon">⏳</div>
+  <div>
+    <div class="advies-lbl">Verwarmingsadvies — Nu</div>
+    <div class="advies-big airco" id="advies-big">Prijzen ophalen…</div>
+    <div class="advies-sub" id="advies-sub"></div>
+  </div>
+</div>
+
+<!-- Compare -->
+<div class="compare-row">
+  <div class="compare-item" id="cmp-airco">
+    <div class="card-lbl">❄️ Airco / Warmtepomp</div>
+    <div class="big-num" style="color:#4ecdc4" id="cmp-airco-val">—</div>
+    <div class="sub-num" id="cmp-airco-cop">per kWh warmte</div>
+    <div class="sub-num" id="cmp-airco-allin"></div>
+    <div class="badge hidden" id="cmp-airco-badge">✓ GOEDKOPER</div>
+  </div>
+  <div class="compare-item" id="cmp-gas">
+    <div class="card-lbl">🔥 CV-Ketel Gas</div>
+    <div class="big-num" style="color:#f5a623" id="cmp-gas-val">—</div>
+    <div class="sub-num" id="cmp-gas-rend">per kWh warmte</div>
+    <div class="sub-num" id="cmp-gas-allin"></div>
+    <div class="badge hidden" id="cmp-gas-badge">✓ GOEDKOPER</div>
+  </div>
+</div>
+
+<!-- Prijs kaarten -->
+<div class="grid3">
+  <!-- Stroom -->
+  <div class="card">
+    <div class="card-lbl">⚡ Stroom — Inkoop</div>
+    <div class="big-num" style="color:#f5e642" id="s-inkoop">—</div>
+    <div class="sub-num">per kWh (excl. BTW)</div>
+    <div class="divider"></div>
+    <div class="cost-row" id="s-opbouw">—</div>
+    <div class="divider"></div>
+    <div class="card-lbl">All-in prijs</div>
+    <div class="mono" style="font-size:20px;font-weight:700;color:#e8f4ff" id="s-allin">—</div>
+  </div>
+  <!-- Gas -->
+  <div class="card">
+    <div class="card-lbl">🔥 Gas — Inkoop</div>
+    <div class="big-num" style="color:#ff8c42" id="g-inkoop">—</div>
+    <div class="sub-num">per m³ (excl. BTW)</div>
+    <div class="divider"></div>
+    <div class="cost-row" id="g-opbouw">—</div>
+    <div class="divider"></div>
+    <div class="card-lbl">All-in prijs</div>
+    <div class="mono" style="font-size:20px;font-weight:700;color:#e8f4ff" id="g-allin">—</div>
+  </div>
+  <!-- Vergelijking -->
+  <div class="card">
+    <div class="card-lbl">📊 Kostenvergelijking</div>
+    <div id="verg-content" style="color:#4a6a7a;font-size:13px">Laden…</div>
+  </div>
+</div>
+
+<!-- Grafiek -->
+<div class="chart-card">
+  <div class="chart-title">⚡ Stroomprijs Vandaag — All-in (incl. levering + belasting + BTW)</div>
+  <div class="chart-wrap">
+    <svg id="chart-svg" viewBox="0 0 900 180" preserveAspectRatio="none"></svg>
+  </div>
+  <div class="chart-footer">Bron: EnergyZero API · Tarieven zijn indicatief</div>
+</div>
+```
+
+  </div>
+
+  <!-- ── Instellingen ── -->
+
+  <div id="tab-instellingen" class="tab">
+    <div class="section">
+      <div class="section-title">⚡ Stroomleverancier</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>LEVERANCIER</label>
+          <select id="s-lev" onchange="onStroomLev(this.value)">
+            <option value="frank">Frank Energie</option>
+            <option value="tibber">Tibber</option>
+            <option value="eneco">Eneco Vrij</option>
+            <option value="vattenfall">Vattenfall Flex</option>
+            <option value="greenchoice">Greenchoice</option>
+            <option value="andere">Andere / Handmatig</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>LEVERINGSKOSTEN (€/kWh excl. BTW)</label>
+          <input type="number" id="s-levering" step="0.001" onchange="saveField('stroom_levering_kwh', this.value)" />
+        </div>
+        <div class="field">
+          <label>VASTE KOSTEN (€/maand)</label>
+          <input type="number" id="s-vast" step="0.01" onchange="saveField('stroom_vast_maand', this.value)" />
+        </div>
+        <div class="field">
+          <label>ENERGIEBELASTING (€/kWh excl. BTW)</label>
+          <input type="number" id="s-eb" step="0.0001" onchange="saveField('stroom_eb', this.value)" />
+        </div>
+        <div class="field">
+          <label>BTW BEREKENEN (21%)</label>
+          <select id="s-btw" onchange="saveField('stroom_btw', this.value === 'ja')">
+            <option value="ja">Ja — incl. BTW</option>
+            <option value="nee">Nee — excl. BTW</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+```
+<div class="section">
+  <div class="section-title">🔥 Gasleverancier</div>
+  <div class="field-grid">
+    <div class="field">
+      <label>LEVERANCIER</label>
+      <select id="g-lev" onchange="onGasLev(this.value)">
+        <option value="frank">Frank Energie</option>
+        <option value="eneco">Eneco Vrij</option>
+        <option value="vattenfall">Vattenfall Flex</option>
+        <option value="greenchoice">Greenchoice</option>
+        <option value="andere">Andere / Handmatig</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>LEVERINGSKOSTEN (€/m³ excl. BTW)</label>
+      <input type="number" id="g-levering" step="0.001" onchange="saveField('gas_levering_m3', this.value)" />
+    </div>
+    <div class="field">
+      <label>VASTE KOSTEN (€/maand)</label>
+      <input type="number" id="g-vast" step="0.01" onchange="saveField('gas_vast_maand', this.value)" />
+    </div>
+    <div class="field">
+      <label>ENERGIEBELASTING (€/m³ excl. BTW)</label>
+      <input type="number" id="g-eb" step="0.0001" onchange="saveField('gas_eb', this.value)" />
+    </div>
+    <div class="field">
+      <label>BTW BEREKENEN (21%)</label>
+      <select id="g-btw" onchange="saveField('gas_btw', this.value === 'ja')">
+        <option value="ja">Ja — incl. BTW</option>
+        <option value="nee">Nee — excl. BTW</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">🌡️ Verwarmingsinstellingen</div>
+  <div class="field-grid">
+    <div class="field">
+      <label>COP AIRCO / WARMTEPOMP</label>
+      <input type="number" id="cop" step="0.1" min="1" max="8" onchange="saveField('cop_airco', this.value)" />
+      <span class="hint">Typisch: 2,5–3,5 (split airco) · 3,5–5,0 (warmtepomp)</span>
+    </div>
+    <div class="field">
+      <label>RENDEMENT CV-KETEL</label>
+      <input type="number" id="rend" step="0.01" min="0.5" max="1.1" onchange="saveField('rendement_ketel', this.value)" />
+      <span class="hint">HR-ketel: 0,95–1,07 · Conventioneel: 0,80–0,90</span>
+    </div>
+  </div>
+  <div class="formula-box">
+    <div class="flbl">BEREKENINGSFORMULES</div>
+    <p>
+      Airco: &nbsp;stroomprijs ÷ COP = kosten/kWh warmte<br>
+      Gas: &nbsp;&nbsp;gasprijs ÷ (9,77 kWh/m³ × rendement) = kosten/kWh warmte<br>
+      <span class="dim">Aardgas calorische waarde: 9,77 kWh/m³ (onderverhitting)</span>
+    </p>
+  </div>
+</div>
+<div class="settings-footer">Instellingen worden automatisch opgeslagen in je browser. Tarieven zijn indicatief — controleer je energierekening.</div>
+```
+
+  </div>
+</main>
+
+<script>
+// ── Constanten ────────────────────────────────────────────────────────────────
+const GAS_KWH = 9.77;
+const BTW = 1.21;
+
+const LEV_STROOM = {
+  frank: 0.029, tibber: 0.019, eneco: 0.035,
+  vattenfall: 0.032, greenchoice: 0.031, andere: 0.030
+};
+const LEV_GAS = {
+  frank: 0.025, eneco: 0.030, vattenfall: 0.028,
+  greenchoice: 0.027, andere: 0.025
+};
+
+const DEF = {
+  stroom_leverancier:  "frank",
+  stroom_levering_kwh: 0.029,
+  stroom_vast_maand:   5.50,
+  stroom_eb:           0.1228,
+  stroom_btw:          true,
+  gas_leverancier:     "frank",
+  gas_levering_m3:     0.025,
+  gas_vast_maand:      6.00,
+  gas_eb:              0.4782,
+  gas_btw:             true,
+  cop_airco:           3.5,
+  rendement_ketel:     0.95,
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let inst = loadInst();
+let stroomData = [];
+let gasData = [];
+
+function loadInst() {
+  try { const s = localStorage.getItem("ez_inst"); return s ? { ...DEF, ...JSON.parse(s) } : { ...DEF }; }
+  catch { return { ...DEF }; }
+}
+function saveInst() { localStorage.setItem("ez_inst", JSON.stringify(inst)); }
+
+// ── Formatting ────────────────────────────────────────────────────────────────
+function fmt(v, d = 4) {
+  if (v == null || isNaN(v)) return "—";
+  return "€\u00A0" + v.toFixed(d).replace(".", ",");
+}
+function fmtTime(iso) {
+  const h = new Date(iso).getHours();
+  return String(h).padStart(2,"0") + ":00";
+}
+
+// ── Berekeningen ──────────────────────────────────────────────────────────────
+function calcStroom(inkoop) {
+  const e = inkoop + inst.stroom_levering_kwh + inst.stroom_eb;
+  return inst.stroom_btw ? e * BTW : e;
+}
+function calcGas(inkoop) {
+  const e = inkoop + inst.gas_levering_m3 + inst.gas_eb;
+  return inst.gas_btw ? e * BTW : e;
+}
+function calcVerg(sA, gA) {
+  const airco = sA / inst.cop_airco;
+  const gas   = gA / (GAS_KWH * inst.rendement_ketel);
+  return { airco, gas, diff: gas - airco, aircoBeter: airco < gas };
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function fetchEZ(type) {
+  const now = new Date();
+  const from = new Date(now); from.setHours(0,0,0,0);
+  const till = new Date(now); till.setHours(23,59,59,999);
+  const url = `https://api.energyzero.nl/v1/energyprices?fromDate=${from.toISOString()}&tillDate=${till.toISOString()}&interval=4&usageType=${type}&inclBtw=false`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const d = await r.json();
+  return d.Prices || [];
+}
+
+async function fetchAll() {
+  setStatus("spin", "Ophalen…");
+  document.getElementById("error-box").classList.add("hidden");
+  try {
+    const [s, g] = await Promise.all([fetchEZ(1), fetchEZ(3)]);
+    stroomData = s; gasData = g;
+    const now = new Date();
+    setStatus("ok", "Bijgewerkt: " + now.toLocaleTimeString("nl-NL", { hour:"2-digit", minute:"2-digit" }));
+    render();
+  } catch(e) {
+    setStatus("err", "Fout");
+    const eb = document.getElementById("error-box");
+    eb.textContent = "⚠ Kan prijzen niet ophalen. (" + e.message + ")";
+    eb.classList.remove("hidden");
+  }
+}
+
+function setStatus(type, txt) {
+  const dot = document.getElementById("dot");
+  dot.className = "dot" + (type === "err" ? " err" : type === "spin" ? " spin" : "");
+  document.getElementById("status-txt").textContent = txt;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const curH = new Date().getHours();
+  const curS = stroomData.find(p => new Date(p.readingDate).getHours() === curH);
+  const curG = gasData[0];
+
+  const sInk = curS?.price ?? null;
+  const gInk = curG?.price ?? null;
+  const sA = sInk != null ? calcStroom(sInk) : null;
+  const gA = gInk != null ? calcGas(gInk) : null;
+
+  // Stroom kaart
+  document.getElementById("s-inkoop").textContent = sInk != null ? fmt(sInk,5) : "—";
+  document.getElementById("s-opbouw").innerHTML =
+    `+ Levering: ${fmt(inst.stroom_levering_kwh,4)}/kWh<br>` +
+    `+ Energiebelasting: ${fmt(inst.stroom_eb,4)}/kWh` +
+    (inst.stroom_btw ? "<br>+ BTW 21%" : "");
+  document.getElementById("s-allin").textContent = sA != null ? fmt(sA,4) + "/kWh" : "—";
+
+  // Gas kaart
+  document.getElementById("g-inkoop").textContent = gInk != null ? fmt(gInk,5) : "—";
+  document.getElementById("g-opbouw").innerHTML =
+    `+ Levering: ${fmt(inst.gas_levering_m3,4)}/m³<br>` +
+    `+ Energiebelasting: ${fmt(inst.gas_eb,4)}/m³` +
+    (inst.gas_btw ? "<br>+ BTW 21%" : "");
+  document.getElementById("g-allin").textContent = gA != null ? fmt(gA,4) + "/m³" : "—";
+
+  // Vergelijking & advies
+  if (sA != null && gA != null) {
+    const v = calcVerg(sA, gA);
+
+    // Advies banner
+    const adv = document.getElementById("advies");
+    adv.className = "advies-card " + (v.aircoBeter ? "airco" : "gas");
+    document.getElementById("advies-icon").textContent = v.aircoBeter ? "❄️" : "🔥";
+    const bigEl = document.getElementById("advies-big");
+    bigEl.className = "advies-big " + (v.aircoBeter ? "airco" : "gas");
+    bigEl.textContent = v.aircoBeter ? "Verwarmen met airco is voordeliger" : "Verwarmen met gas is voordeliger";
+    document.getElementById("advies-sub").textContent =
+      `Verschil: ${fmt(Math.abs(v.diff),4)} per kWh warmte · ` +
+      (v.aircoBeter
+        ? `Airco ${fmt(v.airco,4)} vs Gas ${fmt(v.gas,4)}/kWh`
+        : `Gas ${fmt(v.gas,4)} vs Airco ${fmt(v.airco,4)}/kWh`);
+
+    // Compare items
+    document.getElementById("cmp-airco").className = "compare-item" + (v.aircoBeter ? " winner" : "");
+    document.getElementById("cmp-gas").className   = "compare-item" + (!v.aircoBeter ? " winner" : "");
+    document.getElementById("cmp-airco-val").textContent = fmt(v.airco,4);
+    document.getElementById("cmp-gas-val").textContent   = fmt(v.gas,4);
+    document.getElementById("cmp-airco-cop").textContent = `per kWh warmte (COP ${inst.cop_airco})`;
+    document.getElementById("cmp-gas-rend").textContent  = `per kWh warmte (${Math.round(inst.rendement_ketel*100)}% rendement)`;
+    document.getElementById("cmp-airco-allin").textContent = `Stroom all-in: ${fmt(sA,4)}/kWh`;
+    document.getElementById("cmp-gas-allin").textContent   = `Gas all-in: ${fmt(gA,4)}/m³`;
+    document.getElementById("cmp-airco-badge").classList.toggle("hidden", !v.aircoBeter);
+    document.getElementById("cmp-gas-badge").classList.toggle("hidden", v.aircoBeter);
+
+    // Vergelijking kaart
+    document.getElementById("verg-content").innerHTML =
+      `<div style="margin-bottom:12px">
+        <div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">AIRCO — per kWh warmte</div>
+        <div class="mono" style="font-size:16px;color:#4ecdc4">${fmt(v.airco,5)}</div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">GAS — per kWh warmte</div>
+        <div class="mono" style="font-size:16px;color:#f5a623">${fmt(v.gas,5)}</div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">BESPARING MET ${v.aircoBeter?"AIRCO":"GAS"}</div>
+      <div class="mono" style="font-size:16px;color:${v.aircoBeter?"#4ecdc4":"#f5a623"}">${fmt(Math.abs(v.diff),5)}/kWh warmte</div>
+      <div style="font-size:12px;color:#7a9bb5;margin-top:4px">Per 1.000 kWh warmte: ${fmt(Math.abs(v.diff)*1000,2)}</div>`;
+  }
+
+  // Grafiek
+  if (stroomData.length > 0) drawChart();
+}
+
+// ── SVG Chart ─────────────────────────────────────────────────────────────────
+function drawChart() {
+  const svg = document.getElementById("chart-svg");
+  const W = 900, H = 180, PL = 58, PR = 12, PT = 10, PB = 28;
+  const cW = W - PL - PR, cH = H - PT - PB;
+  const curH = new Date().getHours();
+
+  const points = stroomData.map(p => ({
+    time: fmtTime(p.readingDate),
+    inkoop: p.price,
+    allin: calcStroom(p.price),
+    hour: new Date(p.readingDate).getHours(),
+  }));
+
+  if (!points.length) return;
+  const vals = points.map(p => p.allin);
+  const minV = Math.min(...vals) * 0.97;
+  const maxV = Math.max(...vals) * 1.03;
+
+  function px(i) { return PL + (i / (points.length - 1)) * cW; }
+  function py(v) { return PT + cH - ((v - minV) / (maxV - minV)) * cH; }
+
+  // Y-axis ticks
+  const yTicks = 4;
+  let gridLines = "", yLabels = "";
+  for (let i = 0; i <= yTicks; i++) {
+    const v = minV + (i / yTicks) * (maxV - minV);
+    const y = py(v);
+    gridLines += `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="rgba(255,255,255,0.04)" stroke-dasharray="2 4"/>`;
+    yLabels   += `<text x="${PL-6}" y="${y+4}" text-anchor="end" fill="#4a6a7a" font-size="10" font-family="Space Mono, monospace">€${v.toFixed(3)}</text>`;
+  }
+
+  // X-axis labels (every 3 hours)
+  let xLabels = "";
+  points.forEach((p, i) => {
+    if (p.hour % 3 === 0) {
+      xLabels += `<text x="${px(i)}" y="${H-6}" text-anchor="middle" fill="#4a6a7a" font-size="10" font-family="Space Mono, monospace">${p.time}</text>`;
+    }
+  });
+
+  // Polyline path
+  const pathD = points.map((p,i) => (i===0?"M":"L") + px(i).toFixed(1) + "," + py(p.allin).toFixed(1)).join(" ");
+  // Fill area
+  const areaD = pathD + ` L${px(points.length-1).toFixed(1)},${(PT+cH).toFixed(1)} L${PL},${(PT+cH).toFixed(1)} Z`;
+
+  // Current hour reference line
+  const curIdx = points.findIndex(p => p.hour === curH);
+  let refLine = "";
+  if (curIdx >= 0) {
+    const rx = px(curIdx);
+    refLine = `<line x1="${rx}" y1="${PT}" x2="${rx}" y2="${PT+cH}" stroke="rgba(245,166,35,0.35)" stroke-dasharray="3 3"/>
+               <text x="${rx+4}" y="${PT+12}" fill="#f5a623" font-size="10" font-family="Space Mono, monospace">Nu</text>`;
+  }
+
+  // Invisible hit-target rects per point
+  let hitRects = "";
+  const rw = cW / points.length;
+  points.forEach((p, i) => {
+    const x = px(i) - rw/2;
+    hitRects += `<rect x="${x.toFixed(1)}" y="${PT}" width="${rw.toFixed(1)}" height="${cH}" fill="transparent"
+      data-i="${i}" data-time="${p.time}" data-inkoop="${p.inkoop.toFixed(5)}" data-allin="${p.allin.toFixed(4)}"
+      onmouseenter="showTip(event,this)" onmouseleave="hideTip()"/>`;
+  });
+
+  svg.innerHTML =
+    `<defs>
+      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f5e642" stop-opacity="0.15"/>
+        <stop offset="100%" stop-color="#f5e642" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${gridLines}${yLabels}${xLabels}${refLine}
+    <path d="${areaD}" fill="url(#areaGrad)"/>
+    <path d="${pathD}" fill="none" stroke="#f5e642" stroke-width="2" stroke-linejoin="round"/>
+    ${hitRects}`;
+}
+
+function showTip(e, el) {
+  const tip = document.getElementById("chart-tooltip");
+  document.getElementById("tt-time").textContent   = el.dataset.time;
+  document.getElementById("tt-inkoop").textContent = "Inkoop: €\u00A0" + el.dataset.inkoop + "/kWh";
+  document.getElementById("tt-allin").textContent  = "All-in: €\u00A0" + el.dataset.allin + "/kWh";
+  tip.style.display = "block";
+  moveTip(e);
+}
+function moveTip(e) {
+  const tip = document.getElementById("chart-tooltip");
+  tip.style.left = (e.clientX + 14) + "px";
+  tip.style.top  = (e.clientY - 40) + "px";
+}
+function hideTip() { document.getElementById("chart-tooltip").style.display = "none"; }
+document.addEventListener("mousemove", e => {
+  if (document.getElementById("chart-tooltip").style.display !== "none") moveTip(e);
+});
+
+// ── Instellingen UI ───────────────────────────────────────────────────────────
+function initSettingsUI() {
+  document.getElementById("s-lev").value     = inst.stroom_leverancier;
+  document.getElementById("s-levering").value = inst.stroom_levering_kwh;
+  document.getElementById("s-vast").value    = inst.stroom_vast_maand;
+  document.getElementById("s-eb").value      = inst.stroom_eb;
+  document.getElementById("s-btw").value     = inst.stroom_btw ? "ja" : "nee";
+  document.getElementById("g-lev").value     = inst.gas_leverancier;
+  document.getElementById("g-levering").value = inst.gas_levering_m3;
+  document.getElementById("g-vast").value    = inst.gas_vast_maand;
+  document.getElementById("g-eb").value      = inst.gas_eb;
+  document.getElementById("g-btw").value     = inst.gas_btw ? "ja" : "nee";
+  document.getElementById("cop").value       = inst.cop_airco;
+  document.getElementById("rend").value      = inst.rendement_ketel;
+}
+
+function saveField(key, val) {
+  inst[key] = (typeof DEF[key] === "boolean") ? val : parseFloat(val);
+  saveInst();
+  render();
+}
+
+function onStroomLev(id) {
+  inst.stroom_leverancier = id;
+  if (LEV_STROOM[id] !== undefined) {
+    inst.stroom_levering_kwh = LEV_STROOM[id];
+    document.getElementById("s-levering").value = inst.stroom_levering_kwh;
+  }
+  saveInst(); render();
+}
+function onGasLev(id) {
+  inst.gas_leverancier = id;
+  if (LEV_GAS[id] !== undefined) {
+    inst.gas_levering_m3 = LEV_GAS[id];
+    document.getElementById("g-levering").value = inst.gas_levering_m3;
+  }
+  saveInst(); render();
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  document.querySelectorAll(".nav-btn").forEach(b => {
+    if (b.textContent.toLowerCase().includes(name === "dashboard" ? "dash" : "instel"))
+      b.classList.add("active");
+  });
+}
+
+// ── Auto-refresh elk heel uur ─────────────────────────────────────────────────
+function scheduleNextHour() {
+  const now = new Date();
+  const ms = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000;
+  setTimeout(() => { fetchAll(); setInterval(fetchAll, 3600000); }, ms);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+initSettingsUI();
+fetchAll();
+scheduleNextHour();
+</script>
+
+</body>
+</html>
