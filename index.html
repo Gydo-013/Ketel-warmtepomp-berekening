@@ -196,12 +196,16 @@
         <div class="card-lbl">❄️ Airco / Warmtepomp</div>
         <div class="big-num" style="color:#4ecdc4" id="cmp-airco-val">—</div>
         <div class="sub-num" id="cmp-airco-sub">per kWh warmte</div>
+        <div class="sub-num" id="cmp-airco-uur" style="margin-top:6px;font-size:13px;color:#c8dce8"></div>
+        <div class="sub-num" id="cmp-airco-info" style="color:#4a6a7a"></div>
         <div class="badge hidden" id="cmp-airco-badge">✓ GOEDKOPER</div>
       </div>
       <div class="card" id="cmp-gas">
         <div class="card-lbl">🔥 CV-Ketel Gas</div>
         <div class="big-num" style="color:#f5a623" id="cmp-gas-val">—</div>
         <div class="sub-num" id="cmp-gas-sub">per kWh warmte</div>
+        <div class="sub-num" id="cmp-gas-uur" style="margin-top:6px;font-size:13px;color:#c8dce8"></div>
+        <div class="sub-num" id="cmp-gas-info" style="color:#4a6a7a"></div>
         <div class="badge hidden" id="cmp-gas-badge">✓ GOEDKOPER</div>
       </div>
       <div class="card">
@@ -342,10 +346,42 @@
           <input type="number" id="rend" step="0.01" min="0.5" max="1.1" onchange="saveField('rendement_ketel',this.value)"/>
           <span class="hint">HR-ketel: 0,95–1,07 · Conventioneel: 0,80–0,90</span></div>
       </div>
+
+      <div style="height:1px;background:rgba(255,255,255,0.06);margin:16px 0"></div>
+      <div style="font-size:10px;color:#4a6a7a;letter-spacing:0.08em;font-weight:600;margin-bottom:12px">CV-KETEL VERMOGEN</div>
+      <div class="field-grid">
+        <div class="field"><label>VERMOGEN KETEL (kW)</label>
+          <input type="number" id="ketel-kw" step="0.5" min="1" max="60" onchange="saveField('ketel_kw',this.value)"/>
+          <span class="hint">Staat op het typeplaatje (bv. 24 kW)</span></div>
+        <div class="field" style="justify-content:flex-end">
+          <label>WARMTE OUTPUT</label>
+          <div id="ketel-output" style="padding:8px 11px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:7px;font-family:'Space Mono',monospace;font-size:13px;color:#f5a623">—</div>
+          <span class="hint">ketel_kW × rendement</span></div>
+      </div>
+
+      <div style="height:1px;background:rgba(255,255,255,0.06);margin:16px 0"></div>
+      <div style="font-size:10px;color:#4a6a7a;letter-spacing:0.08em;font-weight:600;margin-bottom:4px">AIRCO / WARMTEPOMP VERMOGEN — P = U × I</div>
+      <div style="font-size:10px;color:#2a4a5a;font-family:'Space Mono',monospace;margin-bottom:12px">Vul spanning én stroom in, of overschrijf het berekende vermogen handmatig</div>
+      <div class="field-grid">
+        <div class="field"><label>SPANNING U (Volt)</label>
+          <input type="number" id="airco-u" step="1" min="100" max="480" onchange="saveFieldAndRecalc('airco_spanning',this.value)"/>
+          <span class="hint">Normaal 230V (1-fase) of 400V (3-fase)</span></div>
+        <div class="field"><label>STROOM I (Ampère)</label>
+          <input type="number" id="airco-i" step="0.1" min="0.1" max="50" onchange="saveFieldAndRecalc('airco_stroom',this.value)"/>
+          <span class="hint">Staat op het typeplaatje of in de handleiding</span></div>
+        <div class="field"><label>BEREKEND VERMOGEN P (kW) — P = U × I</label>
+          <input type="number" id="airco-p" step="0.01" min="0.1" max="20" onchange="overrideAircoPower(this.value)" style="border-color:rgba(78,205,196,0.3)"/>
+          <span class="hint">Automatisch ingevuld · Handmatig aanpassen overschrijft U×I</span></div>
+        <div class="field" style="justify-content:flex-end">
+          <label>WARMTE OUTPUT</label>
+          <div id="airco-output" style="padding:8px 11px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:7px;font-family:'Space Mono',monospace;font-size:13px;color:#4ecdc4">—</div>
+          <span class="hint">P × COP</span></div>
+      </div>
       <div class="formula-box">
         <div class="flbl">BEREKENINGSFORMULES</div>
-        <p>Airco: stroomprijs ÷ COP = €/kWh warmte<br>
-        Gas: gasprijs ÷ (9,77 kWh/m³ × rendement) = €/kWh warmte<br>
+        <p>P = U × I (Watt) → kW = P ÷ 1000<br>
+        Airco: stroomprijs × (U×I÷1000) = €/uur · stroomprijs ÷ COP = €/kWh warmte<br>
+        Gas: gasprijs × (ketel_kW ÷ 9,77) = €/uur · gasprijs ÷ (9,77 × rendement) = €/kWh warmte<br>
         <span style="color:#4a6a7a">Aardgas calorische waarde: 9,77 kWh/m³ (onderverhitting)</span></p>
       </div>
     </div>
@@ -363,7 +399,9 @@ const VAST_G={frank:6.00,anwb:8.50,eneco:7.00,vattenfall:6.50,greenchoice:6.50,a
 const DEF={
   stroom_leverancier:'frank',stroom_levering_kwh:0.029,stroom_vast_maand:5.50,stroom_eb:0.1228,stroom_btw:true,
   gas_leverancier:'frank',gas_levering_m3:0.025,gas_vast_maand:6.00,gas_eb:0.4782,gas_btw:true,
-  cop_airco:3.5,rendement_ketel:0.95
+  cop_airco:3.5,rendement_ketel:0.95,
+  ketel_kw:24,
+  airco_spanning:230,airco_stroom:8
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -381,6 +419,9 @@ function cS(i){const e=i+inst.stroom_levering_kwh+inst.stroom_eb;return inst.str
 function cG(i){const e=i+inst.gas_levering_m3+inst.gas_eb;return inst.gas_btw?e*BTW:e;}
 function wAirco(sA){return sA/inst.cop_airco;}
 function wGas(gA){return gA/(GAS_KWH*inst.rendement_ketel);}
+function aircoKw(){return(inst.airco_spanning*inst.airco_stroom)/1000;}  // P=U*I in kW
+function aircoWarmteKw(){return aircoKw()*inst.cop_airco;}               // kW warmte output
+function ketelWarmteKw(){return inst.ketel_kw*inst.rendement_ketel;}     // kW warmte output
 
 // ── API ───────────────────────────────────────────────────────────────────────
 async function ezFetch(type,date){
@@ -482,6 +523,14 @@ function render(){
     document.getElementById("cmp-gas-val").textContent=fmt(wg,4);
     document.getElementById("cmp-airco-sub").textContent=`per kWh warmte (COP ${inst.cop_airco})`;
     document.getElementById("cmp-gas-sub").textContent=`per kWh warmte (${Math.round(inst.rendement_ketel*100)}% rend.)`;
+    // Kosten per uur
+    const aKw=aircoKw(), aWarmteKw=aircoWarmteKw(), kWarmteKw=ketelWarmteKw();
+    const aircoPerUur=wa*aWarmteKw;   // €/uur = kosten/kWh warmte × kW warmte output
+    const gasPerUur=wg*kWarmteKw;
+    document.getElementById("cmp-airco-uur").textContent=fmt(aircoPerUur,3)+"/uur";
+    document.getElementById("cmp-airco-info").textContent=`${aKw.toFixed(2)} kW el. → ${aWarmteKw.toFixed(1)} kW warmte`;
+    document.getElementById("cmp-gas-uur").textContent=fmt(gasPerUur,3)+"/uur";
+    document.getElementById("cmp-gas-info").textContent=`${inst.ketel_kw} kW → ${kWarmteKw.toFixed(1)} kW warmte`;
     document.getElementById("cmp-airco-badge").classList.toggle("hidden",!ab);
     document.getElementById("cmp-gas-badge").classList.toggle("hidden",ab);
   }
@@ -682,8 +731,39 @@ function initUI(){
   document.getElementById("g-btw").value=inst.gas_btw?"ja":"nee";
   document.getElementById("cop").value=inst.cop_airco;
   document.getElementById("rend").value=inst.rendement_ketel;
+  document.getElementById("ketel-kw").value=inst.ketel_kw;
+  document.getElementById("airco-u").value=inst.airco_spanning;
+  document.getElementById("airco-i").value=inst.airco_stroom;
+  updatePowerDisplay();
 }
-function saveField(k,v){inst[k]=typeof DEF[k]==="boolean"?v:parseFloat(v);saveInst();render();}
+
+function updatePowerDisplay(){
+  const p=aircoKw();
+  document.getElementById("airco-p").value=p.toFixed(3);
+  document.getElementById("airco-output").textContent=aircoWarmteKw().toFixed(2)+" kW warmte";
+  document.getElementById("ketel-output").textContent=ketelWarmteKw().toFixed(2)+" kW warmte";
+}
+
+// Opslaan + P herberekenen vanuit U of I
+function saveFieldAndRecalc(k,v){
+  inst[k]=parseFloat(v);
+  saveInst();
+  updatePowerDisplay();
+  render();
+}
+
+// Handmatig P invullen → bereken I terug (U blijft vast)
+function overrideAircoPower(v){
+  const p=parseFloat(v);
+  if(!p||p<=0)return;
+  // Bereken terug: I = P*1000 / U
+  inst.airco_stroom=parseFloat(((p*1000)/inst.airco_spanning).toFixed(2));
+  document.getElementById("airco-i").value=inst.airco_stroom;
+  saveInst();
+  updatePowerDisplay();
+  render();
+}
+function saveField(k,v){inst[k]=typeof DEF[k]==="boolean"?v:parseFloat(v);saveInst();updatePowerDisplay();render();}
 function onStroomLev(id){
   inst.stroom_leverancier=id;
   if(LEV_S[id]!==undefined){inst.stroom_levering_kwh=LEV_S[id];document.getElementById("s-levering").value=inst.stroom_levering_kwh;}
