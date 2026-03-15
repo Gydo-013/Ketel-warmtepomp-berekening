@@ -8,9 +8,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      min-height: 100vh;
-      background: #080c12;
-      color: #c8dce8;
+      min-height: 100vh; background: #080c12; color: #c8dce8;
       font-family: 'Syne', sans-serif;
       background-image:
         radial-gradient(ellipse 80% 50% at 20% 10%, rgba(245,166,35,0.06) 0%, transparent 60%),
@@ -22,71 +20,42 @@
     ::-webkit-scrollbar-track { background: #080c12; }
     ::-webkit-scrollbar-thumb { background: #1a2a3a; border-radius: 3px; }
 
-    /* ── Header ── */
     .header {
       border-bottom: 1px solid rgba(255,255,255,0.06);
-      padding: 0 24px;
-      display: flex; align-items: center; justify-content: space-between;
-      height: 60px;
-      background: rgba(0,0,0,0.35);
-      backdrop-filter: blur(10px);
+      padding: 0 24px; display: flex; align-items: center; justify-content: space-between;
+      height: 60px; background: rgba(0,0,0,0.35); backdrop-filter: blur(10px);
       position: sticky; top: 0; z-index: 100;
     }
-    .logo {
-      display: flex; align-items: center; gap: 10px;
-      font-weight: 800; font-size: 18px; letter-spacing: 0.04em; color: #f5a623;
-    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: 0.04em; color: #f5a623; }
     .logo svg { width: 28px; height: 28px; flex-shrink: 0; }
-    .nav { display: flex; gap: 4px; }
+    .nav { display: flex; gap: 4px; flex-wrap: wrap; }
     .nav-btn {
-      background: transparent; border: 1px solid transparent;
-      color: #7a9bb5; padding: 7px 18px; border-radius: 6px; cursor: pointer;
+      background: transparent; border: 1px solid transparent; color: #7a9bb5;
+      padding: 7px 18px; border-radius: 6px; cursor: pointer;
       font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px;
       letter-spacing: 0.05em; transition: all 0.15s;
     }
-    .nav-btn.active {
-      background: rgba(245,166,35,0.12); border-color: rgba(245,166,35,0.3); color: #f5a623;
-    }
+    .nav-btn.active { background: rgba(245,166,35,0.12); border-color: rgba(245,166,35,0.3); color: #f5a623; }
 
-    /* ── Main ── */
     .main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
 
-    /* ── Status bar ── */
     .status-bar {
       display: flex; align-items: center; gap: 10px; font-size: 12px;
       font-family: 'Space Mono', monospace; color: #4a6a7a;
       margin-bottom: 24px; justify-content: flex-end; flex-wrap: wrap;
     }
-    .dot {
-      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-      background: #4ecdc4; box-shadow: 0 0 6px #4ecdc4; transition: all 0.3s;
-    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #4ecdc4; box-shadow: 0 0 6px #4ecdc4; transition: all 0.3s; }
     .dot.err  { background: #ee0055; box-shadow: 0 0 6px #ee0055; }
     .dot.spin { background: #f5a623; box-shadow: 0 0 6px #f5a623; }
-    .refresh-btn {
-      background: none; border: 1px solid #2a3a4a; color: #4ecdc4;
-      padding: 4px 12px; border-radius: 5px; cursor: pointer;
-      font-family: 'Space Mono', monospace; font-size: 11px; transition: all 0.15s;
-    }
+    .refresh-btn { background: none; border: 1px solid #2a3a4a; color: #4ecdc4; padding: 4px 12px; border-radius: 5px; cursor: pointer; font-family: 'Space Mono', monospace; font-size: 11px; transition: all 0.15s; }
     .refresh-btn:hover { background: rgba(78,205,196,0.08); }
 
-    /* ── Tabs ── */
     .tab { display: none; }
     .tab.active { display: block; }
 
-    /* ── Advies banner ── */
-    .advies-card {
-      border-radius: 12px; padding: 20px 24px; margin-bottom: 20px;
-      display: flex; align-items: center; gap: 20px;
-    }
-    .advies-card.airco {
-      background: linear-gradient(135deg, rgba(78,205,196,0.08), rgba(78,205,196,0.02));
-      border: 1px solid rgba(78,205,196,0.2);
-    }
-    .advies-card.gas {
-      background: linear-gradient(135deg, rgba(245,166,35,0.08), rgba(245,166,35,0.02));
-      border: 1px solid rgba(245,166,35,0.2);
-    }
+    .advies-card { border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
+    .advies-card.airco { background: linear-gradient(135deg, rgba(78,205,196,0.08), rgba(78,205,196,0.02)); border: 1px solid rgba(78,205,196,0.2); }
+    .advies-card.gas   { background: linear-gradient(135deg, rgba(245,166,35,0.08), rgba(245,166,35,0.02)); border: 1px solid rgba(245,166,35,0.2); }
     .advies-icon { font-size: 40px; line-height: 1; flex-shrink: 0; }
     .advies-lbl { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #4a6a7a; font-weight: 700; margin-bottom: 4px; }
     .advies-big { font-size: 21px; font-weight: 800; }
@@ -94,98 +63,74 @@
     .advies-big.gas   { color: #f5a623; }
     .advies-sub { font-size: 13px; color: #7a9bb5; margin-top: 4px; }
 
-    /* ── Compare row ── */
     .compare-row { display: flex; gap: 12px; margin-bottom: 16px; }
-    .compare-item {
-      flex: 1; background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px; padding: 16px 18px; transition: all 0.2s;
-    }
-    .compare-item.winner {
-      background: rgba(255,255,255,0.04); border-color: rgba(245,166,35,0.25);
-    }
-    @media (max-width: 560px) { .compare-row { flex-direction: column; } }
+    .compare-item { flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 16px 18px; transition: all 0.2s; }
+    .compare-item.winner { background: rgba(255,255,255,0.04); border-color: rgba(245,166,35,0.25); }
+    @media (max-width: 560px) { .compare-row { flex-direction: column; } .nav-btn { padding: 6px 12px; font-size: 12px; } }
 
-    /* ── Grid & Cards ── */
-    .grid3 {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-      gap: 16px; margin-bottom: 20px;
-    }
-    .card {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 12px; padding: 20px 22px;
-    }
-    .card-lbl {
-      font-size: 11px; letter-spacing: 0.12em; color: #4a6a7a;
-      text-transform: uppercase; font-weight: 700; margin-bottom: 8px;
-    }
+    .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 20px 22px; }
+    .card-lbl { font-size: 11px; letter-spacing: 0.12em; color: #4a6a7a; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
     .big-num { font-family: 'Space Mono', monospace; font-size: 30px; font-weight: 700; line-height: 1.1; }
     .sub-num { font-family: 'Space Mono', monospace; font-size: 12px; color: #7a9bb5; margin-top: 4px; }
-    .badge {
-      display: inline-block; padding: 2px 10px; border-radius: 20px; margin-top: 8px;
-      font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700;
-      letter-spacing: 0.06em;
-      background: rgba(78,205,196,0.12); border: 1px solid rgba(78,205,196,0.3); color: #4ecdc4;
-    }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; margin-top: 8px; font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700; letter-spacing: 0.06em; background: rgba(78,205,196,0.12); border: 1px solid rgba(78,205,196,0.3); color: #4ecdc4; }
     .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px 0; }
     .mono { font-family: 'Space Mono', monospace; }
     .cost-row { font-size: 12px; color: #7a9bb5; line-height: 2; font-family: 'Space Mono', monospace; }
 
-    /* ── Chart ── */
-    .chart-card {
-      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px; padding: 22px; margin-bottom: 20px;
-    }
-    .chart-title {
-      font-size: 11px; letter-spacing: 0.12em; color: #4a6a7a;
-      text-transform: uppercase; font-weight: 700; margin-bottom: 12px;
-    }
+    .chart-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 22px; margin-bottom: 20px; }
+    .chart-title { font-size: 11px; letter-spacing: 0.12em; color: #4a6a7a; text-transform: uppercase; font-weight: 700; margin-bottom: 12px; }
     .chart-wrap { position: relative; width: 100%; height: 200px; }
     .chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
     .chart-footer { font-size: 11px; color: #2a4a5a; font-family: 'Space Mono', monospace; margin-top: 8px; }
 
-    /* Tooltip */
-    #chart-tooltip {
-      position: fixed; pointer-events: none;
-      background: #0f1520; border: 1px solid #2a3a4a;
-      padding: 8px 12px; border-radius: 8px;
-      font-size: 12px; font-family: 'Space Mono', monospace;
-      display: none; z-index: 200; white-space: nowrap;
-    }
+    .tooltip-box { position: fixed; pointer-events: none; background: #0f1520; border: 1px solid #2a3a4a; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-family: 'Space Mono', monospace; display: none; z-index: 200; white-space: nowrap; }
 
-    /* ── Error ── */
-    .error-box {
-      background: rgba(220,50,50,0.08); border: 1px solid rgba(220,50,50,0.2);
-      border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
-      color: #ff7a7a; font-size: 13px; font-family: 'Space Mono', monospace;
-    }
+    .error-box { background: rgba(220,50,50,0.08); border: 1px solid rgba(220,50,50,0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: #ff7a7a; font-size: 13px; font-family: 'Space Mono', monospace; }
     .hidden { display: none !important; }
 
-    /* ── Settings ── */
-    .section {
-      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px; padding: 22px 24px; margin-bottom: 16px;
-    }
-    .section-title {
-      font-size: 13px; font-weight: 800; letter-spacing: 0.08em;
-      color: #c8dce8; margin-bottom: 16px; text-transform: uppercase;
-      padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .field-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;
-    }
+    /* ── Voorspelling ── */
+    .forecast-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .forecast-title { font-size: 11px; letter-spacing: 0.12em; color: #4a6a7a; text-transform: uppercase; font-weight: 700; }
+    .forecast-note { font-size: 11px; font-family: 'Space Mono', monospace; margin-top: 4px; }
+    .forecast-pills { display: flex; gap: 12px; flex-wrap: wrap; }
+    .forecast-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; font-family: 'Space Mono', monospace; color: #7a9bb5; }
+    .pill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .forecast-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat-box { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px 16px; }
+    .stat-lbl { font-size: 10px; color: #4a6a7a; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+    .stat-val { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; }
+    .stat-sub { font-size: 11px; color: #4a6a7a; margin-top: 3px; }
+    .prog-bar-wrap { height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; margin: 8px 0 4px; overflow: hidden; }
+    .prog-bar { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+    .fc-chart-wrap { position: relative; width: 100%; height: 220px; }
+    .fc-chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+    .hour-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 4px; margin-bottom: 8px; }
+    .hour-cell { border-radius: 7px; padding: 6px 4px; text-align: center; cursor: default; transition: transform 0.1s; }
+    .hour-cell:hover { transform: translateY(-2px); }
+    .hour-cell.airco { background: rgba(78,205,196,0.1); border: 1px solid rgba(78,205,196,0.2); }
+    .hour-cell.gas   { background: rgba(245,166,35,0.09); border: 1px solid rgba(245,166,35,0.18); }
+    .hour-cell.now   { box-shadow: 0 0 0 2px #f5a623; }
+    .hour-cell.tomorrow { opacity: 0.72; }
+    .hc-time { font-size: 10px; font-family: 'Space Mono', monospace; color: #4a6a7a; line-height: 1.3; }
+    .hc-icon { font-size: 14px; line-height: 1.5; }
+    .hc-diff { font-size: 9px; font-family: 'Space Mono', monospace; color: #4a6a7a; }
+    .hour-cell.airco .hc-diff { color: rgba(78,205,196,0.65); }
+    .hour-cell.gas   .hc-diff { color: rgba(245,166,35,0.65); }
+
+    /* ── Instellingen ── */
+    .section { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 22px 24px; margin-bottom: 16px; }
+    .section-title { font-size: 13px; font-weight: 800; letter-spacing: 0.08em; color: #c8dce8; margin-bottom: 16px; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
     .field { display: flex; flex-direction: column; gap: 6px; }
     .field label { font-size: 11px; color: #4a6a7a; letter-spacing: 0.08em; font-weight: 600; }
-    .field input, .field select {
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 7px; padding: 9px 12px; color: #c8dce8;
-      font-family: 'Space Mono', monospace; font-size: 13px; width: 100%; transition: border-color 0.15s;
-    }
+    .field input, .field select { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 7px; padding: 9px 12px; color: #c8dce8; font-family: 'Space Mono', monospace; font-size: 13px; width: 100%; transition: border-color 0.15s; }
     .field select { background: #0f1520; font-family: 'Syne', sans-serif; cursor: pointer; }
     .hint { font-size: 11px; color: #4a6a7a; }
-    .formula-box {
-      margin-top: 16px; padding: 14px; background: rgba(255,255,255,0.02); border-radius: 8px;
-    }
+    .formula-box { margin-top: 16px; padding: 14px; background: rgba(255,255,255,0.02); border-radius: 8px; }
     .formula-box .flbl { font-size: 11px; color: #4a6a7a; margin-bottom: 6px; }
     .formula-box p { font-size: 12px; font-family: 'Space Mono', monospace; color: #7a9bb5; line-height: 2; }
     .formula-box .dim { color: #4a6a7a; }
@@ -194,11 +139,16 @@
 </head>
 <body>
 
-<!-- Tooltip -->
-<div id="chart-tooltip">
-  <div id="tt-time" style="color:#7a9bb5;margin-bottom:4px"></div>
-  <div id="tt-inkoop" style="color:#f5a623"></div>
-  <div id="tt-allin" style="color:#e8f4ff"></div>
+<div id="tip1" class="tooltip-box">
+  <div id="t1-time"   style="color:#7a9bb5;margin-bottom:4px"></div>
+  <div id="t1-inkoop" style="color:#f5a623"></div>
+  <div id="t1-allin"  style="color:#e8f4ff"></div>
+</div>
+<div id="tip2" class="tooltip-box">
+  <div id="t2-time"  style="color:#7a9bb5;margin-bottom:4px"></div>
+  <div id="t2-airco" style="color:#4ecdc4"></div>
+  <div id="t2-gas"   style="color:#f5a623"></div>
+  <div id="t2-adv"   style="margin-top:4px;font-weight:700"></div>
 </div>
 
 <header class="header">
@@ -210,18 +160,19 @@
     ENERGIEMETER
   </div>
   <nav class="nav">
-    <button class="nav-btn active" onclick="showTab('dashboard')">Dashboard</button>
-    <button class="nav-btn"        onclick="showTab('instellingen')">Instellingen</button>
+    <button class="nav-btn active"  onclick="showTab('dashboard',this)">Dashboard</button>
+    <button class="nav-btn"         onclick="showTab('voorspelling',this)">24u Voorspelling</button>
+    <button class="nav-btn"         onclick="showTab('instellingen',this)">Instellingen</button>
   </nav>
 </header>
 
 <main class="main">
-  <!-- Status bar -->
   <div class="status-bar">
     <div class="dot" id="dot"></div>
     <span id="status-txt">Laden…</span>
+    <span id="morgen-status" style="color:#4a6a7a"></span>
     <span>·</span>
-    <span>Volgende update: elk heel uur</span>
+    <span>Refresh: elk heel uur</span>
     <button class="refresh-btn" onclick="fetchAll()">↻ Nu ophalen</button>
   </div>
 
@@ -229,7 +180,6 @@
   <div id="tab-dashboard" class="tab active">
     <div id="error-box" class="error-box hidden"></div>
 
-    <!-- Advies -->
     <div id="advies" class="advies-card airco">
       <div class="advies-icon" id="advies-icon">⏳</div>
       <div>
@@ -239,7 +189,6 @@
       </div>
     </div>
 
-    <!-- Compare -->
     <div class="compare-row">
       <div class="compare-item" id="cmp-airco">
         <div class="card-lbl">❄️ Airco / Warmtepomp</div>
@@ -257,38 +206,33 @@
       </div>
     </div>
 
-    <!-- Prijs kaarten -->
     <div class="grid3">
-      <!-- Stroom -->
       <div class="card">
         <div class="card-lbl">⚡ Stroom — Inkoop</div>
         <div class="big-num" style="color:#f5e642" id="s-inkoop">—</div>
         <div class="sub-num">per kWh (excl. BTW)</div>
         <div class="divider"></div>
-        <div class="cost-row" id="s-opbouw">—</div>
+        <div class="cost-row" id="s-opbouw"></div>
         <div class="divider"></div>
         <div class="card-lbl">All-in prijs</div>
         <div class="mono" style="font-size:20px;font-weight:700;color:#e8f4ff" id="s-allin">—</div>
       </div>
-      <!-- Gas -->
       <div class="card">
         <div class="card-lbl">🔥 Gas — Inkoop</div>
         <div class="big-num" style="color:#ff8c42" id="g-inkoop">—</div>
         <div class="sub-num">per m³ (excl. BTW)</div>
         <div class="divider"></div>
-        <div class="cost-row" id="g-opbouw">—</div>
+        <div class="cost-row" id="g-opbouw"></div>
         <div class="divider"></div>
         <div class="card-lbl">All-in prijs</div>
         <div class="mono" style="font-size:20px;font-weight:700;color:#e8f4ff" id="g-allin">—</div>
       </div>
-      <!-- Vergelijking -->
       <div class="card">
         <div class="card-lbl">📊 Kostenvergelijking</div>
         <div id="verg-content" style="color:#4a6a7a;font-size:13px">Laden…</div>
       </div>
     </div>
 
-    <!-- Grafiek -->
     <div class="chart-card">
       <div class="chart-title">⚡ Stroomprijs Vandaag — All-in (incl. levering + belasting + BTW)</div>
       <div class="chart-wrap">
@@ -298,438 +242,440 @@
     </div>
   </div>
 
+  <!-- ── 24u Voorspelling ── -->
+  <div id="tab-voorspelling" class="tab">
+    <div class="chart-card">
+      <div class="forecast-header">
+        <div>
+          <div class="forecast-title">📅 Komende 24 uur — Verwarmingskosten per uur</div>
+          <div class="forecast-note" id="fc-note" style="color:#4a6a7a"></div>
+        </div>
+        <div class="forecast-pills">
+          <div class="forecast-pill"><div class="pill-dot" style="background:#4ecdc4"></div>Airco goedkoper</div>
+          <div class="forecast-pill"><div class="pill-dot" style="background:#f5a623"></div>Gas goedkoper</div>
+          <div class="forecast-pill"><div class="pill-dot" style="background:#f5a623;opacity:0.4"></div>Morgen</div>
+        </div>
+      </div>
+
+      <div class="forecast-stats">
+        <div class="stat-box">
+          <div class="stat-lbl">❄️ Uren airco goedkoper</div>
+          <div class="stat-val" id="fc-airco-uren" style="color:#4ecdc4">—</div>
+          <div class="prog-bar-wrap"><div class="prog-bar" id="fc-bar-airco" style="background:#4ecdc4;width:0%"></div></div>
+          <div class="stat-sub" id="fc-airco-gem">Gem. voordeel: —</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">🔥 Uren gas goedkoper</div>
+          <div class="stat-val" id="fc-gas-uren" style="color:#f5a623">—</div>
+          <div class="prog-bar-wrap"><div class="prog-bar" id="fc-bar-gas" style="background:#f5a623;width:0%"></div></div>
+          <div class="stat-sub" id="fc-gas-gem">Gem. voordeel: —</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">💡 Goedkoopste airco-uur</div>
+          <div class="stat-val" id="fc-best-airco" style="color:#4ecdc4;font-size:18px">—</div>
+          <div class="stat-sub" id="fc-best-airco-val"></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">⚠️ Duurste airco-uur</div>
+          <div class="stat-val" id="fc-worst" style="color:#ee4444;font-size:18px">—</div>
+          <div class="stat-sub" id="fc-worst-val"></div>
+        </div>
+      </div>
+
+      <!-- Dubbele lijn grafiek -->
+      <div class="fc-chart-wrap" style="margin-bottom:8px">
+        <svg id="fc-svg" viewBox="0 0 900 200" preserveAspectRatio="none"></svg>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div style="font-size:11px;color:#4ecdc4;font-family:'Space Mono',monospace">── Airco (€/kWh warmte)</div>
+        <div style="font-size:11px;color:#f5a623;font-family:'Space Mono',monospace">── Gas (€/kWh warmte)</div>
+        <div style="font-size:11px;color:#2a4a5a;font-family:'Space Mono',monospace">Bron: EnergyZero API</div>
+      </div>
+
+      <!-- Uur-cellen -->
+      <div class="card-lbl" style="margin-bottom:10px">UUR-VOOR-UUR OVERZICHT</div>
+      <div class="hour-grid" id="hour-grid"></div>
+      <div id="fc-unavail" style="display:none;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 16px;font-size:12px;font-family:'Space Mono',monospace;color:#4a6a7a;margin-top:8px">
+        Prijzen voor morgen worden om 15:00 gepubliceerd. Na 15:00 worden de komende 24 uur automatisch geladen.
+      </div>
+    </div>
+  </div>
+
   <!-- ── Instellingen ── -->
   <div id="tab-instellingen" class="tab">
     <div class="section">
       <div class="section-title">⚡ Stroomleverancier</div>
       <div class="field-grid">
-        <div class="field">
-          <label>LEVERANCIER</label>
+        <div class="field"><label>LEVERANCIER</label>
           <select id="s-lev" onchange="onStroomLev(this.value)">
-            <option value="frank">Frank Energie</option>
-            <option value="tibber">Tibber</option>
-            <option value="eneco">Eneco Vrij</option>
-            <option value="vattenfall">Vattenfall Flex</option>
-            <option value="greenchoice">Greenchoice</option>
-            <option value="andere">Andere / Handmatig</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>LEVERINGSKOSTEN (€/kWh excl. BTW)</label>
-          <input type="number" id="s-levering" step="0.001" onchange="saveField('stroom_levering_kwh', this.value)" />
-        </div>
-        <div class="field">
-          <label>VASTE KOSTEN (€/maand)</label>
-          <input type="number" id="s-vast" step="0.01" onchange="saveField('stroom_vast_maand', this.value)" />
-        </div>
-        <div class="field">
-          <label>ENERGIEBELASTING (€/kWh excl. BTW)</label>
-          <input type="number" id="s-eb" step="0.0001" onchange="saveField('stroom_eb', this.value)" />
-        </div>
-        <div class="field">
-          <label>BTW BEREKENEN (21%)</label>
-          <select id="s-btw" onchange="saveField('stroom_btw', this.value === 'ja')">
-            <option value="ja">Ja — incl. BTW</option>
-            <option value="nee">Nee — excl. BTW</option>
-          </select>
-        </div>
+            <option value="frank">Frank Energie</option><option value="tibber">Tibber</option>
+            <option value="eneco">Eneco Vrij</option><option value="vattenfall">Vattenfall Flex</option>
+            <option value="greenchoice">Greenchoice</option><option value="andere">Andere / Handmatig</option>
+          </select></div>
+        <div class="field"><label>LEVERINGSKOSTEN (€/kWh excl. BTW)</label>
+          <input type="number" id="s-levering" step="0.001" onchange="saveField('stroom_levering_kwh',this.value)"/></div>
+        <div class="field"><label>VASTE KOSTEN (€/maand)</label>
+          <input type="number" id="s-vast" step="0.01" onchange="saveField('stroom_vast_maand',this.value)"/></div>
+        <div class="field"><label>ENERGIEBELASTING (€/kWh excl. BTW)</label>
+          <input type="number" id="s-eb" step="0.0001" onchange="saveField('stroom_eb',this.value)"/></div>
+        <div class="field"><label>BTW BEREKENEN (21%)</label>
+          <select id="s-btw" onchange="saveField('stroom_btw',this.value==='ja')">
+            <option value="ja">Ja — incl. BTW</option><option value="nee">Nee — excl. BTW</option>
+          </select></div>
       </div>
     </div>
-
     <div class="section">
       <div class="section-title">🔥 Gasleverancier</div>
       <div class="field-grid">
-        <div class="field">
-          <label>LEVERANCIER</label>
+        <div class="field"><label>LEVERANCIER</label>
           <select id="g-lev" onchange="onGasLev(this.value)">
-            <option value="frank">Frank Energie</option>
-            <option value="eneco">Eneco Vrij</option>
-            <option value="vattenfall">Vattenfall Flex</option>
-            <option value="greenchoice">Greenchoice</option>
+            <option value="frank">Frank Energie</option><option value="eneco">Eneco Vrij</option>
+            <option value="vattenfall">Vattenfall Flex</option><option value="greenchoice">Greenchoice</option>
             <option value="andere">Andere / Handmatig</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>LEVERINGSKOSTEN (€/m³ excl. BTW)</label>
-          <input type="number" id="g-levering" step="0.001" onchange="saveField('gas_levering_m3', this.value)" />
-        </div>
-        <div class="field">
-          <label>VASTE KOSTEN (€/maand)</label>
-          <input type="number" id="g-vast" step="0.01" onchange="saveField('gas_vast_maand', this.value)" />
-        </div>
-        <div class="field">
-          <label>ENERGIEBELASTING (€/m³ excl. BTW)</label>
-          <input type="number" id="g-eb" step="0.0001" onchange="saveField('gas_eb', this.value)" />
-        </div>
-        <div class="field">
-          <label>BTW BEREKENEN (21%)</label>
-          <select id="g-btw" onchange="saveField('gas_btw', this.value === 'ja')">
-            <option value="ja">Ja — incl. BTW</option>
-            <option value="nee">Nee — excl. BTW</option>
-          </select>
-        </div>
+          </select></div>
+        <div class="field"><label>LEVERINGSKOSTEN (€/m³ excl. BTW)</label>
+          <input type="number" id="g-levering" step="0.001" onchange="saveField('gas_levering_m3',this.value)"/></div>
+        <div class="field"><label>VASTE KOSTEN (€/maand)</label>
+          <input type="number" id="g-vast" step="0.01" onchange="saveField('gas_vast_maand',this.value)"/></div>
+        <div class="field"><label>ENERGIEBELASTING (€/m³ excl. BTW)</label>
+          <input type="number" id="g-eb" step="0.0001" onchange="saveField('gas_eb',this.value)"/></div>
+        <div class="field"><label>BTW BEREKENEN (21%)</label>
+          <select id="g-btw" onchange="saveField('gas_btw',this.value==='ja')">
+            <option value="ja">Ja — incl. BTW</option><option value="nee">Nee — excl. BTW</option>
+          </select></div>
       </div>
     </div>
-
     <div class="section">
       <div class="section-title">🌡️ Verwarmingsinstellingen</div>
       <div class="field-grid">
-        <div class="field">
-          <label>COP AIRCO / WARMTEPOMP</label>
-          <input type="number" id="cop" step="0.1" min="1" max="8" onchange="saveField('cop_airco', this.value)" />
-          <span class="hint">Typisch: 2,5–3,5 (split airco) · 3,5–5,0 (warmtepomp)</span>
-        </div>
-        <div class="field">
-          <label>RENDEMENT CV-KETEL</label>
-          <input type="number" id="rend" step="0.01" min="0.5" max="1.1" onchange="saveField('rendement_ketel', this.value)" />
-          <span class="hint">HR-ketel: 0,95–1,07 · Conventioneel: 0,80–0,90</span>
-        </div>
+        <div class="field"><label>COP AIRCO / WARMTEPOMP</label>
+          <input type="number" id="cop" step="0.1" min="1" max="8" onchange="saveField('cop_airco',this.value)"/>
+          <span class="hint">Typisch: 2,5–3,5 (split airco) · 3,5–5,0 (warmtepomp)</span></div>
+        <div class="field"><label>RENDEMENT CV-KETEL</label>
+          <input type="number" id="rend" step="0.01" min="0.5" max="1.1" onchange="saveField('rendement_ketel',this.value)"/>
+          <span class="hint">HR-ketel: 0,95–1,07 · Conventioneel: 0,80–0,90</span></div>
       </div>
       <div class="formula-box">
         <div class="flbl">BEREKENINGSFORMULES</div>
-        <p>
-          Airco: &nbsp;stroomprijs ÷ COP = kosten/kWh warmte<br>
-          Gas: &nbsp;&nbsp;gasprijs ÷ (9,77 kWh/m³ × rendement) = kosten/kWh warmte<br>
-          <span class="dim">Aardgas calorische waarde: 9,77 kWh/m³ (onderverhitting)</span>
-        </p>
+        <p>Airco: stroomprijs ÷ COP = kosten/kWh warmte<br>
+        Gas: gasprijs ÷ (9,77 kWh/m³ × rendement) = kosten/kWh warmte<br>
+        <span class="dim">Aardgas calorische waarde: 9,77 kWh/m³ (onderverhitting)</span></p>
       </div>
     </div>
-    <div class="settings-footer">Instellingen worden automatisch opgeslagen in je browser. Tarieven zijn indicatief — controleer je energierekening.</div>
+    <div class="settings-footer">Instellingen worden automatisch opgeslagen. Tarieven zijn indicatief — controleer je energierekening.</div>
   </div>
 </main>
 
 <script>
 // ── Constanten ────────────────────────────────────────────────────────────────
-const GAS_KWH = 9.77;
-const BTW = 1.21;
-
-const LEV_STROOM = {
-  frank: 0.029, tibber: 0.019, eneco: 0.035,
-  vattenfall: 0.032, greenchoice: 0.031, andere: 0.030
-};
-const LEV_GAS = {
-  frank: 0.025, eneco: 0.030, vattenfall: 0.028,
-  greenchoice: 0.027, andere: 0.025
-};
-
+const GAS_KWH = 9.77, BTW = 1.21;
+const LEV_S = {frank:0.029,tibber:0.019,eneco:0.035,vattenfall:0.032,greenchoice:0.031,andere:0.030};
+const LEV_G = {frank:0.025,eneco:0.030,vattenfall:0.028,greenchoice:0.027,andere:0.025};
 const DEF = {
-  stroom_leverancier:  "frank",
-  stroom_levering_kwh: 0.029,
-  stroom_vast_maand:   5.50,
-  stroom_eb:           0.1228,
-  stroom_btw:          true,
-  gas_leverancier:     "frank",
-  gas_levering_m3:     0.025,
-  gas_vast_maand:      6.00,
-  gas_eb:              0.4782,
-  gas_btw:             true,
-  cop_airco:           3.5,
-  rendement_ketel:     0.95,
+  stroom_leverancier:'frank',stroom_levering_kwh:0.029,stroom_vast_maand:5.50,stroom_eb:0.1228,stroom_btw:true,
+  gas_leverancier:'frank',gas_levering_m3:0.025,gas_vast_maand:6.00,gas_eb:0.4782,gas_btw:true,
+  cop_airco:3.5,rendement_ketel:0.95
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let inst = loadInst();
-let stroomData = [];
-let gasData = [];
+let inst = (() => { try { const s=localStorage.getItem("ez_inst"); return s?{...DEF,...JSON.parse(s)}:{...DEF}; } catch{return{...DEF};} })();
+let sVandaag=[], sMorgen=[], gVandaag=[], gMorgen=[];
+function saveInst() { localStorage.setItem("ez_inst",JSON.stringify(inst)); }
 
-function loadInst() {
-  try { const s = localStorage.getItem("ez_inst"); return s ? { ...DEF, ...JSON.parse(s) } : { ...DEF }; }
-  catch { return { ...DEF }; }
-}
-function saveInst() { localStorage.setItem("ez_inst", JSON.stringify(inst)); }
-
-// ── Formatting ────────────────────────────────────────────────────────────────
-function fmt(v, d = 4) {
-  if (v == null || isNaN(v)) return "—";
-  return "€\u00A0" + v.toFixed(d).replace(".", ",");
-}
-function fmtTime(iso) {
-  const h = new Date(iso).getHours();
-  return String(h).padStart(2,"0") + ":00";
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmt(v,d=4) { if(v==null||isNaN(v))return"—"; return"€\u00A0"+v.toFixed(d).replace(".",","); }
+function fmtH(iso)  { return String(new Date(iso).getHours()).padStart(2,"0")+":00"; }
+function pad2(n)    { return String(n).padStart(2,"0")+":00"; }
 
 // ── Berekeningen ──────────────────────────────────────────────────────────────
-function calcStroom(inkoop) {
-  const e = inkoop + inst.stroom_levering_kwh + inst.stroom_eb;
-  return inst.stroom_btw ? e * BTW : e;
-}
-function calcGas(inkoop) {
-  const e = inkoop + inst.gas_levering_m3 + inst.gas_eb;
-  return inst.gas_btw ? e * BTW : e;
-}
-function calcVerg(sA, gA) {
-  const airco = sA / inst.cop_airco;
-  const gas   = gA / (GAS_KWH * inst.rendement_ketel);
-  return { airco, gas, diff: gas - airco, aircoBeter: airco < gas };
-}
+function cS(i) { const e=i+inst.stroom_levering_kwh+inst.stroom_eb; return inst.stroom_btw?e*BTW:e; }
+function cG(i) { const e=i+inst.gas_levering_m3+inst.gas_eb;        return inst.gas_btw?e*BTW:e;    }
+function warmteAirco(sA) { return sA/inst.cop_airco; }
+function warmteGas(gA)   { return gA/(GAS_KWH*inst.rendement_ketel); }
 
 // ── API ───────────────────────────────────────────────────────────────────────
-async function fetchEZ(type) {
-  const now = new Date();
-  const from = new Date(now); from.setHours(0,0,0,0);
-  const till = new Date(now); till.setHours(23,59,59,999);
-  const url = `https://api.energyzero.nl/v1/energyprices?fromDate=${from.toISOString()}&tillDate=${till.toISOString()}&interval=4&usageType=${type}&inclBtw=false`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  const d = await r.json();
-  return d.Prices || [];
+async function ezFetch(type, date) {
+  const f=new Date(date); f.setHours(0,0,0,0);
+  const t=new Date(date); t.setHours(23,59,59,999);
+  const r=await fetch(`https://api.energyzero.nl/v1/energyprices?fromDate=${f.toISOString()}&tillDate=${t.toISOString()}&interval=4&usageType=${type}&inclBtw=false`);
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return (await r.json()).Prices||[];
 }
 
 async function fetchAll() {
-  setStatus("spin", "Ophalen…");
+  setDot("spin","Ophalen…");
   document.getElementById("error-box").classList.add("hidden");
+  const now=new Date(), morgen=new Date(now); morgen.setDate(morgen.getDate()+1);
+  const na15=now.getHours()>=15;
   try {
-    const [s, g] = await Promise.all([fetchEZ(1), fetchEZ(3)]);
-    stroomData = s; gasData = g;
-    const now = new Date();
-    setStatus("ok", "Bijgewerkt: " + now.toLocaleTimeString("nl-NL", { hour:"2-digit", minute:"2-digit" }));
+    [sVandaag,gVandaag]=await Promise.all([ezFetch(1,now),ezFetch(3,now)]);
+    if(na15) {
+      try { [sMorgen,gMorgen]=await Promise.all([ezFetch(1,morgen),ezFetch(3,morgen)]); }
+      catch { sMorgen=[]; gMorgen=[]; }
+    } else { sMorgen=[]; gMorgen=[]; }
+    setDot("ok","Bijgewerkt: "+now.toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"}));
+    const ms=document.getElementById("morgen-status");
+    if(na15&&sMorgen.length>0){ms.textContent="· ✓ Morgen beschikbaar";ms.style.color="#4ecdc4";}
+    else if(na15){ms.textContent="· Morgen nog niet beschikbaar";ms.style.color="#4a6a7a";}
+    else{ms.textContent="· Morgen beschikbaar na 15:00";ms.style.color="#4a6a7a";}
     render();
   } catch(e) {
-    setStatus("err", "Fout");
-    const eb = document.getElementById("error-box");
-    eb.textContent = "⚠ Kan prijzen niet ophalen. (" + e.message + ")";
+    setDot("err","Fout");
+    const eb=document.getElementById("error-box");
+    eb.textContent="⚠ Kan prijzen niet ophalen. ("+e.message+")";
     eb.classList.remove("hidden");
   }
 }
+function setDot(t,txt) {
+  document.getElementById("dot").className="dot"+(t==="err"?" err":t==="spin"?" spin":"");
+  document.getElementById("status-txt").textContent=txt;
+}
 
-function setStatus(type, txt) {
-  const dot = document.getElementById("dot");
-  dot.className = "dot" + (type === "err" ? " err" : type === "spin" ? " spin" : "");
-  document.getElementById("status-txt").textContent = txt;
+// ── Bouw 24-uurs venster ──────────────────────────────────────────────────────
+function build24() {
+  const now=new Date(), curH=now.getHours();
+  const smapV={}, smapM={};
+  sVandaag.forEach(p=>smapV[new Date(p.readingDate).getHours()]=p.price);
+  sMorgen.forEach(p=>smapM[new Date(p.readingDate).getHours()]=p.price);
+  const gV=gVandaag[0]?.price??null, gM=gMorgen[0]?.price??null;
+  const out=[];
+  for(let off=0;off<24;off++){
+    const d=new Date(now); d.setHours(curH+off,0,0,0);
+    const tom=d.getDate()!==now.getDate(), h=d.getHours();
+    const sI=tom?smapM[h]??null:smapV[h]??null;
+    const gI=tom?gM:gV;
+    if(sI==null||gI==null) continue;
+    const sA=cS(sI), gA=cG(gI);
+    const wa=warmteAirco(sA), wg=warmteGas(gA);
+    out.push({label:pad2(h),hour:h,isTom:tom,isNow:off===0,sI,gI,sA,gA,wa,wg,diff:wg-wa,aircoBeter:wa<wg});
+  }
+  return out;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
-  const curH = new Date().getHours();
-  const curS = stroomData.find(p => new Date(p.readingDate).getHours() === curH);
-  const curG = gasData[0];
+  const curH=new Date().getHours();
+  const cS_=sVandaag.find(p=>new Date(p.readingDate).getHours()===curH);
+  const cG_=gVandaag[0];
+  const sI=cS_?.price??null, gI=cG_?.price??null;
+  const sA=sI!=null?cS(sI):null, gA=gI!=null?cG(gI):null;
 
-  const sInk = curS?.price ?? null;
-  const gInk = curG?.price ?? null;
-  const sA = sInk != null ? calcStroom(sInk) : null;
-  const gA = gInk != null ? calcGas(gInk) : null;
+  document.getElementById("s-inkoop").textContent=sI!=null?fmt(sI,5):"—";
+  document.getElementById("s-opbouw").innerHTML=`+ Levering: ${fmt(inst.stroom_levering_kwh,4)}/kWh<br>+ Energiebelasting: ${fmt(inst.stroom_eb,4)}/kWh`+(inst.stroom_btw?"<br>+ BTW 21%":"");
+  document.getElementById("s-allin").textContent=sA!=null?fmt(sA,4)+"/kWh":"—";
+  document.getElementById("g-inkoop").textContent=gI!=null?fmt(gI,5):"—";
+  document.getElementById("g-opbouw").innerHTML=`+ Levering: ${fmt(inst.gas_levering_m3,4)}/m³<br>+ Energiebelasting: ${fmt(inst.gas_eb,4)}/m³`+(inst.gas_btw?"<br>+ BTW 21%":"");
+  document.getElementById("g-allin").textContent=gA!=null?fmt(gA,4)+"/m³":"—";
 
-  // Stroom kaart
-  document.getElementById("s-inkoop").textContent = sInk != null ? fmt(sInk,5) : "—";
-  document.getElementById("s-opbouw").innerHTML =
-    `+ Levering: ${fmt(inst.stroom_levering_kwh,4)}/kWh<br>` +
-    `+ Energiebelasting: ${fmt(inst.stroom_eb,4)}/kWh` +
-    (inst.stroom_btw ? "<br>+ BTW 21%" : "");
-  document.getElementById("s-allin").textContent = sA != null ? fmt(sA,4) + "/kWh" : "—";
-
-  // Gas kaart
-  document.getElementById("g-inkoop").textContent = gInk != null ? fmt(gInk,5) : "—";
-  document.getElementById("g-opbouw").innerHTML =
-    `+ Levering: ${fmt(inst.gas_levering_m3,4)}/m³<br>` +
-    `+ Energiebelasting: ${fmt(inst.gas_eb,4)}/m³` +
-    (inst.gas_btw ? "<br>+ BTW 21%" : "");
-  document.getElementById("g-allin").textContent = gA != null ? fmt(gA,4) + "/m³" : "—";
-
-  // Vergelijking & advies
-  if (sA != null && gA != null) {
-    const v = calcVerg(sA, gA);
-
-    // Advies banner
-    const adv = document.getElementById("advies");
-    adv.className = "advies-card " + (v.aircoBeter ? "airco" : "gas");
-    document.getElementById("advies-icon").textContent = v.aircoBeter ? "❄️" : "🔥";
-    const bigEl = document.getElementById("advies-big");
-    bigEl.className = "advies-big " + (v.aircoBeter ? "airco" : "gas");
-    bigEl.textContent = v.aircoBeter ? "Verwarmen met airco is voordeliger" : "Verwarmen met gas is voordeliger";
-    document.getElementById("advies-sub").textContent =
-      `Verschil: ${fmt(Math.abs(v.diff),4)} per kWh warmte · ` +
-      (v.aircoBeter
-        ? `Airco ${fmt(v.airco,4)} vs Gas ${fmt(v.gas,4)}/kWh`
-        : `Gas ${fmt(v.gas,4)} vs Airco ${fmt(v.airco,4)}/kWh`);
-
-    // Compare items
-    document.getElementById("cmp-airco").className = "compare-item" + (v.aircoBeter ? " winner" : "");
-    document.getElementById("cmp-gas").className   = "compare-item" + (!v.aircoBeter ? " winner" : "");
-    document.getElementById("cmp-airco-val").textContent = fmt(v.airco,4);
-    document.getElementById("cmp-gas-val").textContent   = fmt(v.gas,4);
-    document.getElementById("cmp-airco-cop").textContent = `per kWh warmte (COP ${inst.cop_airco})`;
-    document.getElementById("cmp-gas-rend").textContent  = `per kWh warmte (${Math.round(inst.rendement_ketel*100)}% rendement)`;
-    document.getElementById("cmp-airco-allin").textContent = `Stroom all-in: ${fmt(sA,4)}/kWh`;
-    document.getElementById("cmp-gas-allin").textContent   = `Gas all-in: ${fmt(gA,4)}/m³`;
-    document.getElementById("cmp-airco-badge").classList.toggle("hidden", !v.aircoBeter);
-    document.getElementById("cmp-gas-badge").classList.toggle("hidden", v.aircoBeter);
-
-    // Vergelijking kaart
-    document.getElementById("verg-content").innerHTML =
-      `<div style="margin-bottom:12px">
-        <div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">AIRCO — per kWh warmte</div>
-        <div class="mono" style="font-size:16px;color:#4ecdc4">${fmt(v.airco,5)}</div>
-      </div>
-      <div style="margin-bottom:12px">
-        <div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">GAS — per kWh warmte</div>
-        <div class="mono" style="font-size:16px;color:#f5a623">${fmt(v.gas,5)}</div>
-      </div>
-      <div class="divider"></div>
-      <div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">BESPARING MET ${v.aircoBeter?"AIRCO":"GAS"}</div>
-      <div class="mono" style="font-size:16px;color:${v.aircoBeter?"#4ecdc4":"#f5a623"}">${fmt(Math.abs(v.diff),5)}/kWh warmte</div>
-      <div style="font-size:12px;color:#7a9bb5;margin-top:4px">Per 1.000 kWh warmte: ${fmt(Math.abs(v.diff)*1000,2)}</div>`;
+  if(sA!=null&&gA!=null){
+    const wa=warmteAirco(sA), wg=warmteGas(gA), diff=wg-wa, ab=wa<wg;
+    document.getElementById("advies").className="advies-card "+(ab?"airco":"gas");
+    document.getElementById("advies-icon").textContent=ab?"❄️":"🔥";
+    const big=document.getElementById("advies-big"); big.className="advies-big "+(ab?"airco":"gas");
+    big.textContent=ab?"Verwarmen met airco is voordeliger":"Verwarmen met gas is voordeliger";
+    document.getElementById("advies-sub").textContent=`Verschil: ${fmt(Math.abs(diff),4)} per kWh warmte · Airco ${fmt(wa,4)} vs Gas ${fmt(wg,4)}/kWh`;
+    document.getElementById("cmp-airco").className="compare-item"+(ab?" winner":"");
+    document.getElementById("cmp-gas").className="compare-item"+(!ab?" winner":"");
+    document.getElementById("cmp-airco-val").textContent=fmt(wa,4);
+    document.getElementById("cmp-gas-val").textContent=fmt(wg,4);
+    document.getElementById("cmp-airco-cop").textContent=`per kWh warmte (COP ${inst.cop_airco})`;
+    document.getElementById("cmp-gas-rend").textContent=`per kWh warmte (${Math.round(inst.rendement_ketel*100)}% rendement)`;
+    document.getElementById("cmp-airco-allin").textContent=`Stroom all-in: ${fmt(sA,4)}/kWh`;
+    document.getElementById("cmp-gas-allin").textContent=`Gas all-in: ${fmt(gA,4)}/m³`;
+    document.getElementById("cmp-airco-badge").classList.toggle("hidden",!ab);
+    document.getElementById("cmp-gas-badge").classList.toggle("hidden",ab);
+    document.getElementById("verg-content").innerHTML=
+      `<div style="margin-bottom:12px"><div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">AIRCO — per kWh warmte</div><div class="mono" style="font-size:16px;color:#4ecdc4">${fmt(wa,5)}</div></div>
+       <div style="margin-bottom:12px"><div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">GAS — per kWh warmte</div><div class="mono" style="font-size:16px;color:#f5a623">${fmt(wg,5)}</div></div>
+       <div class="divider"></div>
+       <div style="font-size:11px;color:#4a6a7a;margin-bottom:4px">BESPARING MET ${ab?"AIRCO":"GAS"}</div>
+       <div class="mono" style="font-size:16px;color:${ab?"#4ecdc4":"#f5a623"}">${fmt(Math.abs(diff),5)}/kWh warmte</div>
+       <div style="font-size:12px;color:#7a9bb5;margin-top:4px">Per 1.000 kWh warmte: ${fmt(Math.abs(diff)*1000,2)}</div>`;
   }
-
-  // Grafiek
-  if (stroomData.length > 0) drawChart();
+  if(sVandaag.length) drawTodayChart();
+  renderForecast();
 }
 
-// ── SVG Chart ─────────────────────────────────────────────────────────────────
-function drawChart() {
-  const svg = document.getElementById("chart-svg");
-  const W = 900, H = 180, PL = 58, PR = 12, PT = 10, PB = 28;
-  const cW = W - PL - PR, cH = H - PT - PB;
-  const curH = new Date().getHours();
+// ── Voorspelling render ───────────────────────────────────────────────────────
+function renderForecast() {
+  const data=build24();
+  const now=new Date(), na15=now.getHours()>=15;
+  const noteEl=document.getElementById("fc-note");
+  const unavail=document.getElementById("fc-unavail");
 
-  const points = stroomData.map(p => ({
-    time: fmtTime(p.readingDate),
-    inkoop: p.price,
-    allin: calcStroom(p.price),
-    hour: new Date(p.readingDate).getHours(),
-  }));
+  if(!data.length) { noteEl.textContent="Geen data beschikbaar."; unavail.style.display="block"; return; }
+  unavail.style.display="none";
 
-  if (!points.length) return;
-  const vals = points.map(p => p.allin);
-  const minV = Math.min(...vals) * 0.97;
-  const maxV = Math.max(...vals) * 1.03;
+  const hasMorgen=data.some(d=>d.isTom);
+  if(hasMorgen){ noteEl.textContent=`✓ Volledige 24 uur beschikbaar (${data.length} uur)`; noteEl.style.color="#4ecdc4"; }
+  else if(na15){ noteEl.textContent=`Prijzen morgen nog niet beschikbaar — ${data.length} uur getoond`; noteEl.style.color="#f5a623"; unavail.style.display="block"; }
+  else         { noteEl.textContent=`Prijzen morgen beschikbaar na 15:00 — ${data.length} uur getoond`; noteEl.style.color="#4a6a7a"; unavail.style.display="block"; }
 
-  function px(i) { return PL + (i / (points.length - 1)) * cW; }
-  function py(v) { return PT + cH - ((v - minV) / (maxV - minV)) * cH; }
+  const aircoU=data.filter(d=>d.aircoBeter), gasU=data.filter(d=>!d.aircoBeter), n=data.length;
+  document.getElementById("fc-airco-uren").textContent=aircoU.length+" / "+n;
+  document.getElementById("fc-gas-uren").textContent=gasU.length+" / "+n;
+  document.getElementById("fc-bar-airco").style.width=Math.round(aircoU.length/n*100)+"%";
+  document.getElementById("fc-bar-gas").style.width=Math.round(gasU.length/n*100)+"%";
+  const aGem=aircoU.length?aircoU.reduce((s,d)=>s+d.diff,0)/aircoU.length:0;
+  const gGem=gasU.length?gasU.reduce((s,d)=>s+Math.abs(d.diff),0)/gasU.length:0;
+  document.getElementById("fc-airco-gem").textContent=`Gem. voordeel: ${fmt(aGem,4)}/kWh warmte`;
+  document.getElementById("fc-gas-gem").textContent=`Gem. voordeel: ${fmt(gGem,4)}/kWh warmte`;
 
-  // Y-axis ticks
-  const yTicks = 4;
-  let gridLines = "", yLabels = "";
-  for (let i = 0; i <= yTicks; i++) {
-    const v = minV + (i / yTicks) * (maxV - minV);
-    const y = py(v);
-    gridLines += `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="rgba(255,255,255,0.04)" stroke-dasharray="2 4"/>`;
-    yLabels   += `<text x="${PL-6}" y="${y+4}" text-anchor="end" fill="#4a6a7a" font-size="10" font-family="Space Mono, monospace">€${v.toFixed(3)}</text>`;
-  }
+  const best=data.reduce((a,b)=>a.wa<b.wa?a:b);
+  const worst=data.reduce((a,b)=>a.wa>b.wa?a:b);
+  document.getElementById("fc-best-airco").textContent=best.label+(best.isTom?" (morgen)":"");
+  document.getElementById("fc-best-airco-val").textContent=`${fmt(best.wa,4)}/kWh warmte`;
+  document.getElementById("fc-worst").textContent=worst.label+(worst.isTom?" (morgen)":"");
+  document.getElementById("fc-worst-val").textContent=`${fmt(worst.wa,4)}/kWh warmte`;
 
-  // X-axis labels (every 3 hours)
-  let xLabels = "";
-  points.forEach((p, i) => {
-    if (p.hour % 3 === 0) {
-      xLabels += `<text x="${px(i)}" y="${H-6}" text-anchor="middle" fill="#4a6a7a" font-size="10" font-family="Space Mono, monospace">${p.time}</text>`;
-    }
+  // Uur-cellen
+  const grid=document.getElementById("hour-grid"); grid.innerHTML="";
+  data.forEach(d=>{
+    const cell=document.createElement("div");
+    cell.className="hour-cell "+(d.aircoBeter?"airco":"gas")+(d.isTom?" tomorrow":"")+(d.isNow?" now":"");
+    const diffCt=Math.abs(d.diff)*100;
+    cell.innerHTML=
+      `<div class="hc-time">${d.label}${d.isTom?"<br><span style='font-size:8px;color:#2a4a5a'>morgen</span>":""}</div>`+
+      `<div class="hc-icon">${d.aircoBeter?"❄️":"🔥"}</div>`+
+      `<div class="hc-diff">${diffCt.toFixed(1)}¢</div>`;
+    cell.title=`${d.label}${d.isTom?" (morgen)":""}\nAirco: ${fmt(d.wa,5)}/kWh\nGas:   ${fmt(d.wg,5)}/kWh\nVoordeel ${d.aircoBeter?"airco":"gas"}: ${fmt(Math.abs(d.diff),5)}/kWh`;
+    grid.appendChild(cell);
   });
 
-  // Polyline path
-  const pathD = points.map((p,i) => (i===0?"M":"L") + px(i).toFixed(1) + "," + py(p.allin).toFixed(1)).join(" ");
-  // Fill area
-  const areaD = pathD + ` L${px(points.length-1).toFixed(1)},${(PT+cH).toFixed(1)} L${PL},${(PT+cH).toFixed(1)} Z`;
+  drawForecastChart(data);
+}
 
-  // Current hour reference line
-  const curIdx = points.findIndex(p => p.hour === curH);
-  let refLine = "";
-  if (curIdx >= 0) {
-    const rx = px(curIdx);
-    refLine = `<line x1="${rx}" y1="${PT}" x2="${rx}" y2="${PT+cH}" stroke="rgba(245,166,35,0.35)" stroke-dasharray="3 3"/>
-               <text x="${rx+4}" y="${PT+12}" fill="#f5a623" font-size="10" font-family="Space Mono, monospace">Nu</text>`;
+// ── SVG: 24u dubbele lijn ─────────────────────────────────────────────────────
+function drawForecastChart(data) {
+  if(!data.length) return;
+  const svg=document.getElementById("fc-svg");
+  const W=900,H=200,PL=64,PR=12,PT=10,PB=30,cW=W-PL-PR,cH=H-PT-PB;
+  const all=data.flatMap(d=>[d.wa,d.wg]);
+  const mn=Math.min(...all)*0.94, mx=Math.max(...all)*1.06, n=data.length;
+  function px(i){return PL+(n<2?cW/2:(i/(n-1))*cW);}
+  function py(v){return PT+cH-((v-mn)/(mx-mn))*cH;}
+
+  let grid="",yL="";
+  for(let i=0;i<=4;i++){const v=mn+(i/4)*(mx-mn),y=py(v);
+    grid+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="rgba(255,255,255,0.04)" stroke-dasharray="2 4"/>`;
+    yL+=`<text x="${PL-6}" y="${y+4}" text-anchor="end" fill="#4a6a7a" font-size="10" font-family="Space Mono,monospace">€${v.toFixed(4)}</text>`;}
+
+  const step=n>18?3:n>8?2:1;
+  let xL="";
+  data.forEach((d,i)=>{if(i%step===0)
+    xL+=`<text x="${px(i)}" y="${H-4}" text-anchor="middle" fill="${d.isTom?"#3a5a6a":"#4a6a7a"}" font-size="10" font-family="Space Mono,monospace">${d.isTom?"▸":""}${d.label}</text>`;});
+
+  const midI=data.findIndex(d=>d.isTom);
+  let mid="";
+  if(midI>0){const mx2=(px(midI-1)+px(midI))/2;
+    mid=`<line x1="${mx2}" y1="${PT}" x2="${mx2}" y2="${PT+cH}" stroke="rgba(255,255,255,0.1)" stroke-dasharray="4 4"/>
+         <text x="${mx2+4}" y="${PT+11}" fill="rgba(255,255,255,0.2)" font-size="9" font-family="Space Mono,monospace">morgen ▸</text>`;}
+
+  const nI=data.findIndex(d=>d.isNow);
+  let nowL="";
+  if(nI>=0){const nx=px(nI);
+    nowL=`<line x1="${nx}" y1="${PT}" x2="${nx}" y2="${PT+cH}" stroke="rgba(245,166,35,0.4)" stroke-dasharray="3 3"/>
+          <text x="${nx+4}" y="${PT+11}" fill="#f5a623" font-size="10" font-family="Space Mono,monospace">Nu</text>`;}
+
+  // Gekleurde achtergrond
+  let bg="";
+  data.forEach((d,i)=>{
+    const x1=i===0?PL:(px(i-1)+px(i))/2, x2=i===n-1?PL+cW:(px(i)+px(i+1))/2;
+    bg+=`<rect x="${x1.toFixed(1)}" y="${PT}" width="${(x2-x1).toFixed(1)}" height="${cH}" fill="${d.aircoBeter?"rgba(78,205,196,0.04)":"rgba(245,166,35,0.04)"}"/>`;});
+
+  // Gearceerde ruimte tussen de lijnen (goedkoopste optie)
+  let fillAirco="",fillGas="";
+  for(let i=0;i<n-1;i++){
+    const d=data[i],d2=data[i+1];
+    if(d.aircoBeter&&d2.aircoBeter)
+      fillAirco+=`<polygon points="${px(i).toFixed(1)},${py(d.wa).toFixed(1)} ${px(i+1).toFixed(1)},${py(d2.wa).toFixed(1)} ${px(i+1).toFixed(1)},${py(d2.wg).toFixed(1)} ${px(i).toFixed(1)},${py(d.wg).toFixed(1)}" fill="rgba(78,205,196,0.07)"/>`;
+    else if(!d.aircoBeter&&!d2.aircoBeter)
+      fillGas+=`<polygon points="${px(i).toFixed(1)},${py(d.wg).toFixed(1)} ${px(i+1).toFixed(1)},${py(d2.wg).toFixed(1)} ${px(i+1).toFixed(1)},${py(d2.wa).toFixed(1)} ${px(i).toFixed(1)},${py(d.wa).toFixed(1)}" fill="rgba(245,166,35,0.06)"/>`;
   }
 
-  // Invisible hit-target rects per point
-  let hitRects = "";
-  const rw = cW / points.length;
-  points.forEach((p, i) => {
-    const x = px(i) - rw/2;
-    hitRects += `<rect x="${x.toFixed(1)}" y="${PT}" width="${rw.toFixed(1)}" height="${cH}" fill="transparent"
-      data-i="${i}" data-time="${p.time}" data-inkoop="${p.inkoop.toFixed(5)}" data-allin="${p.allin.toFixed(4)}"
-      onmouseenter="showTip(event,this)" onmouseleave="hideTip()"/>`;
-  });
+  const gasPath  =data.map((d,i)=>(i===0?"M":"L")+px(i).toFixed(1)+","+py(d.wg).toFixed(1)).join(" ");
+  const aircoPath=data.map((d,i)=>(i===0?"M":"L")+px(i).toFixed(1)+","+py(d.wa).toFixed(1)).join(" ");
 
-  svg.innerHTML =
-    `<defs>
-      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#f5e642" stop-opacity="0.15"/>
-        <stop offset="100%" stop-color="#f5e642" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    ${gridLines}${yLabels}${xLabels}${refLine}
-    <path d="${areaD}" fill="url(#areaGrad)"/>
-    <path d="${pathD}" fill="none" stroke="#f5e642" stroke-width="2" stroke-linejoin="round"/>
-    ${hitRects}`;
+  let hits=""; const rw=n>1?cW/(n-1):cW;
+  data.forEach((d,i)=>{const cx=px(i),hw=rw*0.55;
+    hits+=`<rect x="${(cx-hw/2).toFixed(1)}" y="${PT}" width="${hw.toFixed(1)}" height="${cH}" fill="transparent"
+      data-t="${d.label}${d.isTom?" (morgen)":""}" data-wa="${d.wa.toFixed(5)}" data-wg="${d.wg.toFixed(5)}" data-ab="${d.aircoBeter}"
+      onmouseenter="showT2(event,this)" onmouseleave="hideT2()"/>`;});
+
+  svg.innerHTML=`${bg}${fillAirco}${fillGas}${grid}${yL}${xL}${mid}${nowL}
+    <path d="${gasPath}"   fill="none" stroke="#f5a623" stroke-width="1.5" stroke-linejoin="round" opacity="0.7"/>
+    <path d="${aircoPath}" fill="none" stroke="#4ecdc4" stroke-width="2"   stroke-linejoin="round"/>
+    ${hits}`;
 }
 
-function showTip(e, el) {
-  const tip = document.getElementById("chart-tooltip");
-  document.getElementById("tt-time").textContent   = el.dataset.time;
-  document.getElementById("tt-inkoop").textContent = "Inkoop: €\u00A0" + el.dataset.inkoop + "/kWh";
-  document.getElementById("tt-allin").textContent  = "All-in: €\u00A0" + el.dataset.allin + "/kWh";
-  tip.style.display = "block";
-  moveTip(e);
-}
-function moveTip(e) {
-  const tip = document.getElementById("chart-tooltip");
-  tip.style.left = (e.clientX + 14) + "px";
-  tip.style.top  = (e.clientY - 40) + "px";
-}
-function hideTip() { document.getElementById("chart-tooltip").style.display = "none"; }
-document.addEventListener("mousemove", e => {
-  if (document.getElementById("chart-tooltip").style.display !== "none") moveTip(e);
-});
-
-// ── Instellingen UI ───────────────────────────────────────────────────────────
-function initSettingsUI() {
-  document.getElementById("s-lev").value     = inst.stroom_leverancier;
-  document.getElementById("s-levering").value = inst.stroom_levering_kwh;
-  document.getElementById("s-vast").value    = inst.stroom_vast_maand;
-  document.getElementById("s-eb").value      = inst.stroom_eb;
-  document.getElementById("s-btw").value     = inst.stroom_btw ? "ja" : "nee";
-  document.getElementById("g-lev").value     = inst.gas_leverancier;
-  document.getElementById("g-levering").value = inst.gas_levering_m3;
-  document.getElementById("g-vast").value    = inst.gas_vast_maand;
-  document.getElementById("g-eb").value      = inst.gas_eb;
-  document.getElementById("g-btw").value     = inst.gas_btw ? "ja" : "nee";
-  document.getElementById("cop").value       = inst.cop_airco;
-  document.getElementById("rend").value      = inst.rendement_ketel;
+// ── SVG: Vandaag ─────────────────────────────────────────────────────────────
+function drawTodayChart() {
+  const svg=document.getElementById("chart-svg");
+  const W=900,H=180,PL=58,PR=12,PT=10,PB=28,cW=W-PL-PR,cH=H-PT-PB;
+  const curH=new Date().getHours();
+  const pts=sVandaag.map(p=>({time:fmtH(p.readingDate),ink:p.price,alin:cS(p.price),h:new Date(p.readingDate).getHours()}));
+  if(!pts.length) return;
+  const vals=pts.map(p=>p.alin), mn=Math.min(...vals)*0.97, mx=Math.max(...vals)*1.03;
+  function px(i){return PL+(i/(pts.length-1))*cW;} function py(v){return PT+cH-((v-mn)/(mx-mn))*cH;}
+  let gl="",yl="";
+  for(let i=0;i<=4;i++){const v=mn+(i/4)*(mx-mn),y=py(v);
+    gl+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="rgba(255,255,255,0.04)" stroke-dasharray="2 4"/>`;
+    yl+=`<text x="${PL-6}" y="${y+4}" text-anchor="end" fill="#4a6a7a" font-size="10" font-family="Space Mono,monospace">€${v.toFixed(3)}</text>`;}
+  let xl=""; pts.forEach((p,i)=>{if(p.h%3===0)xl+=`<text x="${px(i)}" y="${H-6}" text-anchor="middle" fill="#4a6a7a" font-size="10" font-family="Space Mono,monospace">${p.time}</text>`;});
+  const pD=pts.map((p,i)=>(i===0?"M":"L")+px(i).toFixed(1)+","+py(p.alin).toFixed(1)).join(" ");
+  const aD=pD+` L${px(pts.length-1)},${PT+cH} L${PL},${PT+cH} Z`;
+  const ci=pts.findIndex(p=>p.h===curH);
+  const ref=ci>=0?`<line x1="${px(ci)}" y1="${PT}" x2="${px(ci)}" y2="${PT+cH}" stroke="rgba(245,166,35,0.35)" stroke-dasharray="3 3"/><text x="${px(ci)+4}" y="${PT+12}" fill="#f5a623" font-size="10" font-family="Space Mono,monospace">Nu</text>`:"";
+  let hits=""; const rw=cW/pts.length;
+  pts.forEach((p,i)=>{hits+=`<rect x="${(px(i)-rw/2).toFixed(1)}" y="${PT}" width="${rw.toFixed(1)}" height="${cH}" fill="transparent" data-t="${p.time}" data-i="${p.ink.toFixed(5)}" data-a="${p.alin.toFixed(4)}" onmouseenter="showT1(event,this)" onmouseleave="hideT1()"/>`;});
+  svg.innerHTML=`<defs><linearGradient id="aG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f5e642" stop-opacity="0.15"/><stop offset="100%" stop-color="#f5e642" stop-opacity="0"/></linearGradient></defs>${gl}${yl}${xl}${ref}<path d="${aD}" fill="url(#aG)"/><path d="${pD}" fill="none" stroke="#f5e642" stroke-width="2" stroke-linejoin="round"/>${hits}`;
 }
 
-function saveField(key, val) {
-  inst[key] = (typeof DEF[key] === "boolean") ? val : parseFloat(val);
-  saveInst();
-  render();
+// ── Tooltips ──────────────────────────────────────────────────────────────────
+function showT1(e,el){const t=document.getElementById("tip1");document.getElementById("t1-time").textContent=el.dataset.t;document.getElementById("t1-inkoop").textContent="Inkoop: €\u00A0"+el.dataset.i+"/kWh";document.getElementById("t1-allin").textContent="All-in: €\u00A0"+el.dataset.a+"/kWh";t.style.display="block";mTip(e,t);}
+function hideT1(){document.getElementById("tip1").style.display="none";}
+function showT2(e,el){const t=document.getElementById("tip2");const ab=el.dataset.ab==="true";document.getElementById("t2-time").textContent=el.dataset.t;document.getElementById("t2-airco").textContent="❄️ Airco: €\u00A0"+parseFloat(el.dataset.wa).toFixed(5)+"/kWh warmte";document.getElementById("t2-gas").textContent="🔥 Gas:   €\u00A0"+parseFloat(el.dataset.wg).toFixed(5)+"/kWh warmte";const adv=document.getElementById("t2-adv");adv.textContent=ab?"→ Airco goedkoper":"→ Gas goedkoper";adv.style.color=ab?"#4ecdc4":"#f5a623";t.style.display="block";mTip(e,t);}
+function hideT2(){document.getElementById("tip2").style.display="none";}
+function mTip(e,t){t.style.left=(e.clientX+14)+"px";t.style.top=(e.clientY-50)+"px";}
+document.addEventListener("mousemove",e=>{["tip1","tip2"].forEach(id=>{const t=document.getElementById(id);if(t.style.display!=="none")mTip(e,t);});});
+
+// ── Instellingen ──────────────────────────────────────────────────────────────
+function initUI(){
+  document.getElementById("s-lev").value=inst.stroom_leverancier;
+  document.getElementById("s-levering").value=inst.stroom_levering_kwh;
+  document.getElementById("s-vast").value=inst.stroom_vast_maand;
+  document.getElementById("s-eb").value=inst.stroom_eb;
+  document.getElementById("s-btw").value=inst.stroom_btw?"ja":"nee";
+  document.getElementById("g-lev").value=inst.gas_leverancier;
+  document.getElementById("g-levering").value=inst.gas_levering_m3;
+  document.getElementById("g-vast").value=inst.gas_vast_maand;
+  document.getElementById("g-eb").value=inst.gas_eb;
+  document.getElementById("g-btw").value=inst.gas_btw?"ja":"nee";
+  document.getElementById("cop").value=inst.cop_airco;
+  document.getElementById("rend").value=inst.rendement_ketel;
+}
+function saveField(k,v){inst[k]=typeof DEF[k]==="boolean"?v:parseFloat(v);saveInst();render();}
+function onStroomLev(id){inst.stroom_leverancier=id;if(LEV_S[id]!==undefined){inst.stroom_levering_kwh=LEV_S[id];document.getElementById("s-levering").value=inst.stroom_levering_kwh;}saveInst();render();}
+function onGasLev(id){inst.gas_leverancier=id;if(LEV_G[id]!==undefined){inst.gas_levering_m3=LEV_G[id];document.getElementById("g-levering").value=inst.gas_levering_m3;}saveInst();render();}
+
+function showTab(name,btn){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+  btn.classList.add("active");
 }
 
-function onStroomLev(id) {
-  inst.stroom_leverancier = id;
-  if (LEV_STROOM[id] !== undefined) {
-    inst.stroom_levering_kwh = LEV_STROOM[id];
-    document.getElementById("s-levering").value = inst.stroom_levering_kwh;
-  }
-  saveInst(); render();
-}
-function onGasLev(id) {
-  inst.gas_leverancier = id;
-  if (LEV_GAS[id] !== undefined) {
-    inst.gas_levering_m3 = LEV_GAS[id];
-    document.getElementById("g-levering").value = inst.gas_levering_m3;
-  }
-  saveInst(); render();
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+function schedule(){
+  const now=new Date();
+  const msHour=(60-now.getMinutes())*60000-now.getSeconds()*1000;
+  setTimeout(()=>{fetchAll();setInterval(fetchAll,3600000);},msHour);
+  // Extra trigger om 15:01 voor morgen-data
+  const h=now.getHours(),m=now.getMinutes();
+  if(h<15){const ms15=((15-h)*60-m)*60000-now.getSeconds()*1000+60000;setTimeout(fetchAll,ms15);}
 }
 
-// ── Tab switching ─────────────────────────────────────────────────────────────
-function showTab(name) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-  document.getElementById("tab-" + name).classList.add("active");
-  document.querySelectorAll(".nav-btn").forEach(b => {
-    if (b.textContent.toLowerCase().includes(name === "dashboard" ? "dash" : "instel"))
-      b.classList.add("active");
-  });
-}
-
-// ── Auto-refresh elk heel uur ─────────────────────────────────────────────────
-function scheduleNextHour() {
-  const now = new Date();
-  const ms = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000;
-  setTimeout(() => { fetchAll(); setInterval(fetchAll, 3600000); }, ms);
-}
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-initSettingsUI();
-fetchAll();
-scheduleNextHour();
+initUI(); fetchAll(); schedule();
 </script>
 </body>
 </html>
